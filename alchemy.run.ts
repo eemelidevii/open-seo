@@ -248,6 +248,10 @@ const resolveSelfHostAccess = (
         applicationName: `open-seo ${stage}`,
         domain: `${workerName(stage)}.${subdomain}`,
         emails: allowedEmails,
+        oneTimePin: {
+          resourceId: "SelfHostEmailOtp",
+          name: "OpenSEO email one-time PIN",
+        },
       });
       policyAud = application.aud;
     }

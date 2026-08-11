@@ -65,13 +65,28 @@ export const emailAccessGate = (options: {
   applicationName: string;
   domain: string;
   emails: string[];
+  oneTimePin?: {
+    resourceId: string;
+    name: string;
+  };
 }) =>
   Effect.gen(function* () {
+    if (options.oneTimePin) {
+      yield* Cloudflare.Access.IdentityProvider(options.oneTimePin.resourceId, {
+        name: options.oneTimePin.name,
+        type: "onetimepin",
+        config: {},
+      });
+    }
+
     const allow = yield* Cloudflare.Access.Policy(options.policyId, {
       name: options.policyName,
       decision: "allow",
       include: options.emails.map((email) => ({ email: { email } })),
     });
+
+    // Leaving allowedIdps unset keeps every account login method available.
+    // Self-hosters therefore retain Cloudflare login while gaining email PINs.
     return yield* Cloudflare.Access.Application(options.applicationId, {
       type: "self_hosted",
       name: options.applicationName,

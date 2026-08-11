@@ -80,6 +80,8 @@ pnpm deploy:selfhost --yes
 
 Add the teammate to `ACCESS_ALLOWED_EMAILS` in `.env.selfhost` and redeploy. Dashboard edits to that Access policy are overwritten on the next deploy. (If you manage the Access application yourself, edit its Allow policy in Zero Trust instead.)
 
+The managed self-host setup adds email one-time PIN as a login method while retaining any existing Cloudflare login method. An allowlisted teammate can open the Worker URL, enter the exact email address from `ACCESS_ALLOWED_EMAILS`, and use the code Cloudflare emails them. They do not need a Cloudflare account.
+
 Everyone allowed through Cloudflare Access works in one shared workspace and sees the same projects. Deployments upgraded from older versions (which gave each user a separate workspace) show a one-time dashboard banner — clicking it migrates all previous per-user work into the shared workspace.
 
 ## Troubleshooting
