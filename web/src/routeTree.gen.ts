@@ -23,10 +23,12 @@ import { Route as BlogsSplatRouteImport } from './routes/blogs/$'
 import { Route as ApiSubscribeRouteImport } from './routes/api/subscribe'
 import { Route as ApiEventRouteImport } from './routes/api/event'
 import { Route as ApiBacklinkCheckRouteImport } from './routes/api/backlink-check'
+import { Route as MarketingRoadmapRouteImport } from './routes/_marketing/roadmap'
 import { Route as MarketingPricingRouteImport } from './routes/_marketing/pricing'
 import { Route as MarketingOpenSourceSeoRouteImport } from './routes/_marketing/open-source-seo'
 import { Route as MarketingGoogleSearchConsoleMcpRouteImport } from './routes/_marketing/google-search-console-mcp'
 import { Route as MarketingBacklinkCheckerRouteImport } from './routes/_marketing/backlink-checker'
+import { Route as MarketingLibraryIndexRouteImport } from './routes/_marketing/library/index'
 import { Route as MarketingFeaturesIndexRouteImport } from './routes/_marketing/features/index'
 import { Route as MarketingFeaturesSiteAuditRouteImport } from './routes/_marketing/features/site-audit'
 import { Route as MarketingFeaturesSavedKeywordsRouteImport } from './routes/_marketing/features/saved-keywords'
@@ -117,6 +119,11 @@ const ApiBacklinkCheckRoute = ApiBacklinkCheckRouteImport.update({
   path: '/api/backlink-check',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MarketingRoadmapRoute = MarketingRoadmapRouteImport.update({
+  id: '/roadmap',
+  path: '/roadmap',
+  getParentRoute: () => MarketingRoute,
+} as any)
 const MarketingPricingRoute = MarketingPricingRouteImport.update({
   id: '/pricing',
   path: '/pricing',
@@ -139,6 +146,11 @@ const MarketingBacklinkCheckerRoute =
     path: '/backlink-checker',
     getParentRoute: () => MarketingRoute,
   } as any)
+const MarketingLibraryIndexRoute = MarketingLibraryIndexRouteImport.update({
+  id: '/library/',
+  path: '/library/',
+  getParentRoute: () => MarketingRoute,
+} as any)
 const MarketingFeaturesIndexRoute = MarketingFeaturesIndexRouteImport.update({
   id: '/features/',
   path: '/features/',
@@ -268,6 +280,7 @@ export interface FileRoutesByFullPath {
   '/google-search-console-mcp': typeof MarketingGoogleSearchConsoleMcpRoute
   '/open-source-seo': typeof MarketingOpenSourceSeoRoute
   '/pricing': typeof MarketingPricingRoute
+  '/roadmap': typeof MarketingRoadmapRoute
   '/api/backlink-check': typeof ApiBacklinkCheckRoute
   '/api/event': typeof ApiEventRoute
   '/api/subscribe': typeof ApiSubscribeRoute
@@ -289,6 +302,7 @@ export interface FileRoutesByFullPath {
   '/features/saved-keywords': typeof MarketingFeaturesSavedKeywordsRoute
   '/features/site-audit': typeof MarketingFeaturesSiteAuditRoute
   '/features/': typeof MarketingFeaturesIndexRoute
+  '/library/': typeof MarketingLibraryIndexRoute
   '/library/keyword-research/cluster-topical-hubs': typeof MarketingLibraryKeywordResearchClusterTopicalHubsRoute
   '/library/keyword-research/gsc-programmatic-discovery': typeof MarketingLibraryKeywordResearchGscProgrammaticDiscoveryRoute
   '/library/keyword-research/intent-beyond-google': typeof MarketingLibraryKeywordResearchIntentBeyondGoogleRoute
@@ -306,6 +320,7 @@ export interface FileRoutesByTo {
   '/google-search-console-mcp': typeof MarketingGoogleSearchConsoleMcpRoute
   '/open-source-seo': typeof MarketingOpenSourceSeoRoute
   '/pricing': typeof MarketingPricingRoute
+  '/roadmap': typeof MarketingRoadmapRoute
   '/api/backlink-check': typeof ApiBacklinkCheckRoute
   '/api/event': typeof ApiEventRoute
   '/api/subscribe': typeof ApiSubscribeRoute
@@ -328,6 +343,7 @@ export interface FileRoutesByTo {
   '/features/saved-keywords': typeof MarketingFeaturesSavedKeywordsRoute
   '/features/site-audit': typeof MarketingFeaturesSiteAuditRoute
   '/features': typeof MarketingFeaturesIndexRoute
+  '/library': typeof MarketingLibraryIndexRoute
   '/library/keyword-research/cluster-topical-hubs': typeof MarketingLibraryKeywordResearchClusterTopicalHubsRoute
   '/library/keyword-research/gsc-programmatic-discovery': typeof MarketingLibraryKeywordResearchGscProgrammaticDiscoveryRoute
   '/library/keyword-research/intent-beyond-google': typeof MarketingLibraryKeywordResearchIntentBeyondGoogleRoute
@@ -347,6 +363,7 @@ export interface FileRoutesById {
   '/_marketing/google-search-console-mcp': typeof MarketingGoogleSearchConsoleMcpRoute
   '/_marketing/open-source-seo': typeof MarketingOpenSourceSeoRoute
   '/_marketing/pricing': typeof MarketingPricingRoute
+  '/_marketing/roadmap': typeof MarketingRoadmapRoute
   '/api/backlink-check': typeof ApiBacklinkCheckRoute
   '/api/event': typeof ApiEventRoute
   '/api/subscribe': typeof ApiSubscribeRoute
@@ -369,6 +386,7 @@ export interface FileRoutesById {
   '/_marketing/features/saved-keywords': typeof MarketingFeaturesSavedKeywordsRoute
   '/_marketing/features/site-audit': typeof MarketingFeaturesSiteAuditRoute
   '/_marketing/features/': typeof MarketingFeaturesIndexRoute
+  '/_marketing/library/': typeof MarketingLibraryIndexRoute
   '/_marketing/library/keyword-research/cluster-topical-hubs': typeof MarketingLibraryKeywordResearchClusterTopicalHubsRoute
   '/_marketing/library/keyword-research/gsc-programmatic-discovery': typeof MarketingLibraryKeywordResearchGscProgrammaticDiscoveryRoute
   '/_marketing/library/keyword-research/intent-beyond-google': typeof MarketingLibraryKeywordResearchIntentBeyondGoogleRoute
@@ -389,6 +407,7 @@ export interface FileRouteTypes {
     | '/google-search-console-mcp'
     | '/open-source-seo'
     | '/pricing'
+    | '/roadmap'
     | '/api/backlink-check'
     | '/api/event'
     | '/api/subscribe'
@@ -410,6 +429,7 @@ export interface FileRouteTypes {
     | '/features/saved-keywords'
     | '/features/site-audit'
     | '/features/'
+    | '/library/'
     | '/library/keyword-research/cluster-topical-hubs'
     | '/library/keyword-research/gsc-programmatic-discovery'
     | '/library/keyword-research/intent-beyond-google'
@@ -427,6 +447,7 @@ export interface FileRouteTypes {
     | '/google-search-console-mcp'
     | '/open-source-seo'
     | '/pricing'
+    | '/roadmap'
     | '/api/backlink-check'
     | '/api/event'
     | '/api/subscribe'
@@ -449,6 +470,7 @@ export interface FileRouteTypes {
     | '/features/saved-keywords'
     | '/features/site-audit'
     | '/features'
+    | '/library'
     | '/library/keyword-research/cluster-topical-hubs'
     | '/library/keyword-research/gsc-programmatic-discovery'
     | '/library/keyword-research/intent-beyond-google'
@@ -467,6 +489,7 @@ export interface FileRouteTypes {
     | '/_marketing/google-search-console-mcp'
     | '/_marketing/open-source-seo'
     | '/_marketing/pricing'
+    | '/_marketing/roadmap'
     | '/api/backlink-check'
     | '/api/event'
     | '/api/subscribe'
@@ -489,6 +512,7 @@ export interface FileRouteTypes {
     | '/_marketing/features/saved-keywords'
     | '/_marketing/features/site-audit'
     | '/_marketing/features/'
+    | '/_marketing/library/'
     | '/_marketing/library/keyword-research/cluster-topical-hubs'
     | '/_marketing/library/keyword-research/gsc-programmatic-discovery'
     | '/_marketing/library/keyword-research/intent-beyond-google'
@@ -616,6 +640,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiBacklinkCheckRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_marketing/roadmap': {
+      id: '/_marketing/roadmap'
+      path: '/roadmap'
+      fullPath: '/roadmap'
+      preLoaderRoute: typeof MarketingRoadmapRouteImport
+      parentRoute: typeof MarketingRoute
+    }
     '/_marketing/pricing': {
       id: '/_marketing/pricing'
       path: '/pricing'
@@ -642,6 +673,13 @@ declare module '@tanstack/react-router' {
       path: '/backlink-checker'
       fullPath: '/backlink-checker'
       preLoaderRoute: typeof MarketingBacklinkCheckerRouteImport
+      parentRoute: typeof MarketingRoute
+    }
+    '/_marketing/library/': {
+      id: '/_marketing/library/'
+      path: '/library'
+      fullPath: '/library/'
+      preLoaderRoute: typeof MarketingLibraryIndexRouteImport
       parentRoute: typeof MarketingRoute
     }
     '/_marketing/features/': {
@@ -792,6 +830,7 @@ interface MarketingRouteChildren {
   MarketingGoogleSearchConsoleMcpRoute: typeof MarketingGoogleSearchConsoleMcpRoute
   MarketingOpenSourceSeoRoute: typeof MarketingOpenSourceSeoRoute
   MarketingPricingRoute: typeof MarketingPricingRoute
+  MarketingRoadmapRoute: typeof MarketingRoadmapRoute
   MarketingIndexRoute: typeof MarketingIndexRoute
   MarketingFeaturesAiBrandVisibilityRoute: typeof MarketingFeaturesAiBrandVisibilityRoute
   MarketingFeaturesAiSearchPromptsRoute: typeof MarketingFeaturesAiSearchPromptsRoute
@@ -804,6 +843,7 @@ interface MarketingRouteChildren {
   MarketingFeaturesSavedKeywordsRoute: typeof MarketingFeaturesSavedKeywordsRoute
   MarketingFeaturesSiteAuditRoute: typeof MarketingFeaturesSiteAuditRoute
   MarketingFeaturesIndexRoute: typeof MarketingFeaturesIndexRoute
+  MarketingLibraryIndexRoute: typeof MarketingLibraryIndexRoute
   MarketingLibraryKeywordResearchClusterTopicalHubsRoute: typeof MarketingLibraryKeywordResearchClusterTopicalHubsRoute
   MarketingLibraryKeywordResearchGscProgrammaticDiscoveryRoute: typeof MarketingLibraryKeywordResearchGscProgrammaticDiscoveryRoute
   MarketingLibraryKeywordResearchIntentBeyondGoogleRoute: typeof MarketingLibraryKeywordResearchIntentBeyondGoogleRoute
@@ -820,6 +860,7 @@ const MarketingRouteChildren: MarketingRouteChildren = {
   MarketingGoogleSearchConsoleMcpRoute: MarketingGoogleSearchConsoleMcpRoute,
   MarketingOpenSourceSeoRoute: MarketingOpenSourceSeoRoute,
   MarketingPricingRoute: MarketingPricingRoute,
+  MarketingRoadmapRoute: MarketingRoadmapRoute,
   MarketingIndexRoute: MarketingIndexRoute,
   MarketingFeaturesAiBrandVisibilityRoute:
     MarketingFeaturesAiBrandVisibilityRoute,
@@ -833,6 +874,7 @@ const MarketingRouteChildren: MarketingRouteChildren = {
   MarketingFeaturesSavedKeywordsRoute: MarketingFeaturesSavedKeywordsRoute,
   MarketingFeaturesSiteAuditRoute: MarketingFeaturesSiteAuditRoute,
   MarketingFeaturesIndexRoute: MarketingFeaturesIndexRoute,
+  MarketingLibraryIndexRoute: MarketingLibraryIndexRoute,
   MarketingLibraryKeywordResearchClusterTopicalHubsRoute:
     MarketingLibraryKeywordResearchClusterTopicalHubsRoute,
   MarketingLibraryKeywordResearchGscProgrammaticDiscoveryRoute:
