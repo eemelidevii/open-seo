@@ -245,12 +245,17 @@ export async function handleSelfHostedOpenSeoMcpRequest(
   const identity =
     authMode === "local_noauth"
       ? await resolveLocalNoAuthContext()
-      : await resolveCloudflareAccessContext(request.headers);
+      : await resolveCloudflareAccessContext(request.headers, {
+          allowMcpServiceToken: true,
+        });
   const props = createWorkersOAuthMcpProps({
     userId: identity.userId,
     userEmail: identity.userEmail,
     organizationId: identity.organizationId,
     baseUrl: getPublicOrigin(request),
+    ...("mcpServiceToken" in identity && identity.mcpServiceToken
+      ? { readOnly: true, clientId: "service_token" }
+      : {}),
     userAgent: request.headers.get("user-agent") ?? undefined,
   });
 

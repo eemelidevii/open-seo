@@ -64,6 +64,10 @@ const applicationAuthContextSchema = z.object({
   // delete these two fields and the fallback in createMcpToolContext, and read
   // clientId/scopes in transport.ts from authInfo instead of props.
   clientId: z.string().min(1).nullable().optional(),
+  // Service-token callers can observe only the explicit dashboard read tools.
+  // This is stamped after verification of Cloudflare's signed assertion, not
+  // read from a client-controlled MCP argument or HTTP header.
+  readOnly: z.boolean().optional(),
   scopes: z.array(z.string()).optional(),
   // Raw request User-Agent, stamped per request by the transport. The only
   // client signal present on every call: initialize's clientInfo is not

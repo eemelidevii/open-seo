@@ -6,6 +6,7 @@ import {
 import type { z } from "zod";
 import {
   createMcpToolContext,
+  MCP_AUTH_CONTEXT_PROP,
   type McpProps,
   type ToolContext,
 } from "@/server/mcp/context";
@@ -81,6 +82,18 @@ import {
 import { whoamiTool } from "@/server/mcp/tools/whoami";
 
 type ToolSchema = z.ZodType | z.ZodRawShape;
+
+const SERVICE_READ_TOOLS = new Set([
+  "whoami",
+  "list_projects",
+  "get_search_console_performance",
+  "list_saved_keywords",
+  "get_rank_tracker",
+  "get_audit_status",
+  "get_audit_issues",
+  "get_audit_pages",
+  "inspect_urls",
+]);
 
 // Tools declare inputSchema as either a raw Zod shape (most tools) or a full
 // z.object (the GA4 tools); both normalize to one object schema at
@@ -165,7 +178,14 @@ export function createOpenSeoMcpServer(authProps: McpProps) {
 
   const register = <Input extends ToolSchema>(
     tool: OpenSeoToolDefinition<Input>,
-  ) => registerOpenSeoTool(server, tool, authProps);
+  ) => {
+    if (
+      authProps[MCP_AUTH_CONTEXT_PROP].readOnly &&
+      !SERVICE_READ_TOOLS.has(tool.name)
+    )
+      return;
+    registerOpenSeoTool(server, tool, authProps);
+  };
 
   register(whoamiTool);
   register(listProjectsTool);

@@ -15,6 +15,11 @@ import {
   requireAllowedEmails,
   workerName,
 } from "./alchemy.access.ts";
+import {
+  captureManagedOAuth,
+  restoreManagedOAuth,
+  validateMcpServiceToken,
+} from "./alchemy.access-managed-oauth.ts";
 
 // Preview hostnames are `open-seo-<stage>.<WORKERS_SUBDOMAIN>` — the naming
 // lives in alchemy.access.ts, shared with the Access wildcard the security
@@ -244,18 +249,33 @@ const resolveSelfHostAccess = (
       const allowedEmails = yield* requireAllowedEmails(
         "Set ACCESS_ALLOWED_EMAILS to the comma-separated emails allowed through Cloudflare Access — or set TEAM_DOMAIN and POLICY_AUD to manage the Access application yourself.",
       );
+      const serviceTokenId = yield* optionalVar("MCP_SERVICE_TOKEN_ID");
+      const serviceClientId = yield* optionalVar("MCP_SERVICE_TOKEN_CLIENT_ID");
+      const serviceEmail = yield* optionalVar("MCP_SERVICE_TOKEN_EMAIL");
+      yield* validateMcpServiceToken(
+        accountId,
+        serviceTokenId,
+        serviceClientId,
+        serviceEmail,
+      );
+      const domain = `${workerName(stage)}.${subdomain}`;
+      // Alchemy's Access Application resource omits oauth_configuration from
+      // its PUT body. Preserve live Managed OAuth across resource updates.
+      const managedOAuth = yield* captureManagedOAuth(accountId, domain);
       const application = yield* emailAccessGate({
         policyId: "SelfHostAllowUsers",
         applicationId: "SelfHostAccess",
         policyName: `open-seo ${stage} self-host users`,
         applicationName: `open-seo ${stage}`,
-        domain: `${workerName(stage)}.${subdomain}`,
+        domain,
         emails: allowedEmails,
+        serviceTokenId: serviceTokenId || undefined,
         oneTimePin: {
           resourceId: "SelfHostEmailOtp",
           name: "OpenSEO email one-time PIN",
         },
       });
+      yield* restoreManagedOAuth(accountId, domain, managedOAuth);
       policyAud = application.aud;
     }
 
@@ -297,6 +317,8 @@ const dataEnv = {
   // Alchemy reconciles worker vars on every deploy, so the telemetry opt-out
   // must live in the env file — a dashboard-set var would be wiped.
   OPENSEO_TELEMETRY_DISABLED: optionalVar("OPENSEO_TELEMETRY_DISABLED"),
+  MCP_SERVICE_TOKEN_CLIENT_ID: optionalVar("MCP_SERVICE_TOKEN_CLIENT_ID"),
+  MCP_SERVICE_TOKEN_EMAIL: optionalVar("MCP_SERVICE_TOKEN_EMAIL"),
 };
 
 export default Alchemy.Stack(

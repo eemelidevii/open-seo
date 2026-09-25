@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- one spec covers both authenticated and self-hosted MCP transport boundaries */
 import type { CreateMcpHandlerOptions } from "agents/mcp/server";
 import { McpServer } from "@modelcontextprotocol/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -189,13 +190,41 @@ describe("handleSelfHostedOpenSeoMcpRequest", () => {
     expect(response.status).toBe(200);
     expect(
       selfHostedAuthMocks.resolveCloudflareAccessContext,
-    ).toHaveBeenCalledWith(expect.any(Headers));
+    ).toHaveBeenCalledWith(expect.any(Headers), {
+      allowMcpServiceToken: true,
+    });
     expect(selfHostedAuthMocks.createOpenSeoMcpServer).toHaveBeenCalledWith({
       [MCP_AUTH_CONTEXT_PROP]: {
         userId: "cloudflare-user",
         userEmail: "person@example.com",
         organizationId: "delegated-cloudflare-user",
         baseUrl: "https://open-seo.test",
+      },
+    });
+  });
+
+  it("stamps the verified service identity as read-only before creating tools", async () => {
+    selfHostedAuthMocks.resolveCloudflareAccessContext.mockResolvedValueOnce({
+      userId: "service:ops-token.access",
+      userEmail: "ops-service@example.com",
+      organizationId: "shared-workspace",
+      mcpServiceToken: true,
+    });
+    const response = await handleSelfHostedOpenSeoMcpRequest(
+      createMcpRequest(),
+      "cloudflare_access",
+      {},
+      ctx,
+    );
+    expect(response.status).toBe(200);
+    expect(selfHostedAuthMocks.createOpenSeoMcpServer).toHaveBeenCalledWith({
+      [MCP_AUTH_CONTEXT_PROP]: {
+        userId: "service:ops-token.access",
+        userEmail: "ops-service@example.com",
+        organizationId: "shared-workspace",
+        baseUrl: "https://open-seo.test",
+        clientId: "service_token",
+        readOnly: true,
       },
     });
   });

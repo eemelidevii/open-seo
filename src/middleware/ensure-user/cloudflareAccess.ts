@@ -38,7 +38,8 @@ function getValidatedTeamDomain(teamDomain: string) {
 
 export async function resolveCloudflareAccessContext(
   headers: Headers,
-): Promise<EnsuredUserContext> {
+  options: { allowMcpServiceToken?: boolean } = {},
+): Promise<EnsuredUserContext & { mcpServiceToken?: true }> {
   const teamDomain = env.TEAM_DOMAIN
     ? getValidatedTeamDomain(env.TEAM_DOMAIN)
     : null;
@@ -89,6 +90,26 @@ export async function resolveCloudflareAccessContext(
 
   const userId = typeof payload.sub === "string" ? payload.sub : null;
   const userEmail = typeof payload.email === "string" ? payload.email : null;
+
+  // A Cloudflare service-token assertion has common_name but no user email.
+  // Accept only the one configured token, and only when the MCP transport
+  // explicitly opts in. Ordinary app routes retain human-only Access auth.
+  if (!userEmail && options.allowMcpServiceToken) {
+    const clientId = env.MCP_SERVICE_TOKEN_CLIENT_ID?.trim();
+    const serviceEmail = env.MCP_SERVICE_TOKEN_EMAIL?.trim();
+    if (
+      clientId &&
+      serviceEmail &&
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(serviceEmail) &&
+      payload.common_name === clientId
+    ) {
+      const identity = await resolveSharedWorkspaceContext(
+        `service:${clientId}`,
+        serviceEmail,
+      );
+      return { ...identity, mcpServiceToken: true };
+    }
+  }
 
   if (!userId || !userEmail) {
     throw new AppError("UNAUTHENTICATED");

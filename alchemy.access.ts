@@ -65,6 +65,7 @@ export const emailAccessGate = (options: {
   applicationName: string;
   domain: string;
   emails: string[];
+  serviceTokenId?: string;
   oneTimePin?: {
     resourceId: string;
     name: string;
@@ -85,12 +86,22 @@ export const emailAccessGate = (options: {
       include: options.emails.map((email) => ({ email: { email } })),
     });
 
+    // Cloudflare's `non_identity` decision is the Service Auth action. It
+    // admits only the explicitly selected token, not every account token.
+    const service = options.serviceTokenId
+      ? yield* Cloudflare.Access.Policy("SelfHostReadOnlyMcpService", {
+          name: `${options.applicationName} read-only MCP service`,
+          decision: "non_identity",
+          include: [{ serviceToken: { tokenId: options.serviceTokenId } }],
+        })
+      : null;
+
     // Leaving allowedIdps unset keeps every account login method available.
     // Self-hosters therefore retain Cloudflare login while gaining email PINs.
     return yield* Cloudflare.Access.Application(options.applicationId, {
       type: "self_hosted",
       name: options.applicationName,
       domain: options.domain,
-      policies: [allow.policyId],
+      policies: service ? [service.policyId, allow.policyId] : [allow.policyId],
     });
   });
