@@ -270,10 +270,16 @@ const resolveSelfHostAccess = (
         domain,
         emails: allowedEmails,
         serviceTokenId: serviceTokenId || undefined,
-        oneTimePin: {
-          resourceId: "SelfHostEmailOtp",
-          name: "OpenSEO email one-time PIN",
-        },
+        // The identity provider belongs to the long-lived selfhost stack.
+        // Isolated verification stages reuse the account's existing login
+        // methods without trying to adopt that singleton resource.
+        oneTimePin:
+          stage === "selfhost"
+            ? {
+                resourceId: "SelfHostEmailOtp",
+                name: "OpenSEO email one-time PIN",
+              }
+            : undefined,
       });
       yield* restoreManagedOAuth(accountId, domain, managedOAuth);
       policyAud = application.aud;
