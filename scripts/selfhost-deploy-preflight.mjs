@@ -28,7 +28,7 @@ if (major < 22 || (major === 22 && minor < 6)) {
   );
 }
 
-const envFile = ".env.selfhost";
+const envFile = process.env.OPENSEO_SELFHOST_ENV_FILE || ".env.selfhost";
 if (!existsSync(envFile)) {
   fail(
     `${em(envFile)} not found — create it first:`,

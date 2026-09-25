@@ -51,13 +51,14 @@ credentials are durable only while both the token and Access policy remain
 valid.
 
 OpenSEO's upstream Alchemy application resource omits Managed OAuth from its
-PUT body. This fork captures the full live OAuth configuration before Access
-reconciliation, validates that it can be round-tripped, restores it afterward
-if needed, and verifies the redirect/grant settings. This guard is locally
-tested, not production-certified. Before deploying over an existing app,
-review the exact Access application, policy and redirect allowlist; perform a
-staged deploy and live OAuth smoke test. Never rely on an unchecked routine
-deploy to preserve Managed OAuth.
+PUT body. Deploy with `pnpm deploy:selfhost --yes`, not a direct `alchemy deploy`:
+the wrapper captures the live OAuth configuration before reconciliation,
+repairs it **after** Alchemy finishes (including a partial failure), and
+verifies the redirect/grant settings. An in-stack repair is too early because
+Alchemy reconciles resources after planning. Before deploying over an existing
+app, review the exact Access application, policy and redirect allowlist;
+perform a staged deploy and live OAuth smoke test. A failed repair blocks the
+release.
 
 ## Telemetry
 

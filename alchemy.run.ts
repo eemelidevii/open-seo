@@ -15,11 +15,7 @@ import {
   requireAllowedEmails,
   workerName,
 } from "./alchemy.access.ts";
-import {
-  captureManagedOAuth,
-  restoreManagedOAuth,
-  validateMcpServiceToken,
-} from "./alchemy.access-managed-oauth.ts";
+import { validateMcpServiceToken } from "./alchemy.access-managed-oauth.ts";
 
 // Preview hostnames are `open-seo-<stage>.<WORKERS_SUBDOMAIN>` — the naming
 // lives in alchemy.access.ts, shared with the Access wildcard the security
@@ -259,9 +255,6 @@ const resolveSelfHostAccess = (
         serviceEmail,
       );
       const domain = `${workerName(stage)}.${subdomain}`;
-      // Alchemy's Access Application resource omits oauth_configuration from
-      // its PUT body. Preserve live Managed OAuth across resource updates.
-      const managedOAuth = yield* captureManagedOAuth(accountId, domain);
       const application = yield* emailAccessGate({
         policyId: "SelfHostAllowUsers",
         applicationId: "SelfHostAccess",
@@ -281,7 +274,6 @@ const resolveSelfHostAccess = (
               }
             : undefined,
       });
-      yield* restoreManagedOAuth(accountId, domain, managedOAuth);
       policyAud = application.aud;
     }
 
