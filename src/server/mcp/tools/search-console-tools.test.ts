@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { GscApiError, GscNotConnectedError } from "@/server/lib/gscErrors";
+import {
+  GscApiError,
+  GscNotConnectedError,
+  GscTokenError,
+} from "@/server/lib/gscErrors";
 import * as searchConsoleTools from "./search-console-tools";
 import { makeToolContext } from "./tool-test-support";
 
@@ -185,7 +189,7 @@ describe("search console MCP tools", () => {
     );
   });
 
-  it("renders an api_error with a reconnect URL on a GSC API failure", async () => {
+  it("classifies denied GSC access as authorization required", async () => {
     mocks.GscService.getPerformance.mockRejectedValue(
       new GscApiError(403, "no access"),
     );
@@ -198,12 +202,40 @@ describe("search console MCP tools", () => {
 
     expect(result.structuredContent).toMatchObject({
       ok: false,
-      reason: "api_error",
+      reason: "authorization_required",
     });
     const first = result.content[0];
     expect(first.type === "text" && first.text).toContain(
       "/p/project_1/search-performance",
     );
+  });
+
+  it("classifies an expired GSC grant separately from a transient API error", async () => {
+    mocks.GscService.getPerformance.mockRejectedValue(
+      new GscTokenError("expired"),
+    );
+    const result =
+      await searchConsoleTools.getSearchConsolePerformanceTool.handler(
+        { projectId: "project_1" },
+        toolContext,
+      );
+    expect(result.structuredContent).toMatchObject({
+      ok: false,
+      reason: "authorization_required",
+    });
+
+    mocks.GscService.getPerformance.mockRejectedValue(
+      new GscApiError(429, "rate limited"),
+    );
+    const retryable =
+      await searchConsoleTools.getSearchConsolePerformanceTool.handler(
+        { projectId: "project_1" },
+        toolContext,
+      );
+    expect(retryable.structuredContent).toMatchObject({
+      ok: false,
+      reason: "api_error",
+    });
   });
 
   it("rejects searchAppearance combined with another dimension", async () => {

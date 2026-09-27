@@ -28,8 +28,14 @@ Under **APIs & Services → OAuth consent screen**:
 - While the app is in **Testing**, add the Google accounts that will connect as
   **test users** — otherwise Google blocks the sign-in with `access_denied`.
 
-For personal or internal use you don't need to submit for verification; testing
-mode is enough.
+Testing mode is suitable for a short evaluation, not an unattended integration:
+Google [expires offline refresh grants](https://support.google.com/cloud/answer/15549945)
+that request the Search Console scope after seven days in this mode. A dashboard
+that must stay connected needs an
+OAuth project with publishing status **In production**. Complete the required
+branding and policy URLs, review Google's verification requirements for the
+requested scopes, and only then publish the app. Do not attempt to work around
+the fixed expiry by repeatedly refreshing the access token.
 
 ## 3) Create an OAuth client ID
 
@@ -90,7 +96,9 @@ project.
 - OpenSEO uses your Google client to run the OAuth flow and stores the resulting
   grant in its database, with the access and refresh tokens **encrypted at rest**
   (keyed by `BETTER_AUTH_SECRET`).
-- Access tokens are minted and refreshed on demand — you only authorize once.
+- Access tokens are minted and refreshed on demand. Reauthorization is still
+  required when Google revokes or expires the underlying refresh grant; in
+  **Testing** mode with the Search Console scope, plan for the seven-day limit.
 - Search Console data comes from your own Google account, so OpenSEO never meters credits for it.
 
 ## Troubleshooting

@@ -113,6 +113,18 @@ function describeGscError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+function gscFailureReason(error: unknown) {
+  if (error instanceof GscNotConnectedError) return "not_connected";
+  if (
+    error instanceof GscTokenError ||
+    (error instanceof GscApiError &&
+      (error.status === 401 || error.status === 403))
+  ) {
+    return "authorization_required";
+  }
+  return "api_error";
+}
+
 // ---------------------------------------------------------------------------
 // get_search_console_performance
 // ---------------------------------------------------------------------------
@@ -384,13 +396,13 @@ export const getSearchConsolePerformanceTool = {
         },
       });
     } catch (error) {
-      const isNotConnected = error instanceof GscNotConnectedError;
+      const reason = gscFailureReason(error);
       return mcpResponse({
-        text: `${describeGscError(error)}${isNotConnected ? ` Connect it here: ${connectUrl}` : ` (reconnect at ${connectUrl})`}`,
+        text: `${describeGscError(error)}${reason === "not_connected" ? ` Connect it here: ${connectUrl}` : reason === "authorization_required" ? ` Reconnect it here: ${connectUrl}` : ""}`,
         meta,
         structuredContent: {
           ok: false,
-          reason: isNotConnected ? "not_connected" : "api_error",
+          reason,
           connectUrl,
         },
       });
@@ -492,13 +504,13 @@ export const inspectUrlsTool = {
         structuredContent: { ok: true, siteUrl, results },
       });
     } catch (error) {
-      const isNotConnected = error instanceof GscNotConnectedError;
+      const reason = gscFailureReason(error);
       return mcpResponse({
-        text: `${describeGscError(error)}${isNotConnected ? ` Connect it here: ${connectUrl}` : ` (reconnect at ${connectUrl})`}`,
+        text: `${describeGscError(error)}${reason === "not_connected" ? ` Connect it here: ${connectUrl}` : reason === "authorization_required" ? ` Reconnect it here: ${connectUrl}` : ""}`,
         meta,
         structuredContent: {
           ok: false,
-          reason: isNotConnected ? "not_connected" : "api_error",
+          reason,
           connectUrl,
         },
       });
