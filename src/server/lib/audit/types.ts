@@ -12,6 +12,10 @@ export type LighthouseStrategy = "auto" | "none";
 export interface AuditConfig {
   maxPages: number;
   lighthouseStrategy: LighthouseStrategy;
+  /** Detected from the start URL's `powered-by` response header. */
+  sitePlatform?: "shopify";
+  /** Which crawler-access credential the crawl replayed, if any. */
+  crawlerCredentialId?: string;
 }
 
 // Read-side only (writes stringify a typed AuditConfig). Stored rows may hold
@@ -30,6 +34,10 @@ const lighthouseStrategySchema = z
 const auditConfigSchema = z.object({
   maxPages: z.number().int().min(MIN_AUDIT_PAGES).max(PAID_MAX_AUDIT_PAGES),
   lighthouseStrategy: lighthouseStrategySchema,
+  // Absent on every audit stored before crawler access shipped, and a future
+  // platform value must not make an old report unviewable.
+  sitePlatform: z.literal("shopify").optional().catch(undefined),
+  crawlerCredentialId: z.string().optional().catch(undefined),
 });
 
 const auditConfigCodec = jsonCodec(auditConfigSchema);

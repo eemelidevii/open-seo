@@ -41,7 +41,7 @@ export function getOAuthSignedQuery(search: string | null | undefined) {
   return signedParams.toString();
 }
 
-export function getOAuthAuthorizeRedirectFromSearch(
+function getOAuthAuthorizeRedirectFromSearch(
   search: string | null | undefined,
 ) {
   const signedQuery = getOAuthSignedQuery(search);
@@ -80,9 +80,19 @@ export function getCurrentAuthRedirectFromHref(href: string) {
  * one lands the user on a blank page. Navigate to these with a document load.
  */
 export function isDocumentRoute(redirectTo: string) {
-  // Every componentless route the app can navigate to must reload; /r/ is the
-  // only one (/s/<token>/raw is never a router destination).
-  return redirectTo.startsWith("/r/");
+  // Both member reports and public shares are served by document handlers.
+  return redirectTo.startsWith("/r/") || redirectTo.startsWith("/s/");
+}
+
+/**
+ * Better Auth only accepts a relative callbackURL made of a narrow character
+ * set, so a redirect like an MCP authorize URL (`redirect_uri=http://...`) or
+ * one with a `#hash` fails as "Invalid callbackURL". An absolute same-origin
+ * URL is checked against trustedOrigins by origin alone. Reads `window`, so
+ * call it from event handlers, not during render.
+ */
+export function toAuthCallbackURL(redirectTo: string) {
+  return new URL(redirectTo, window.location.origin).toString();
 }
 
 export function getSignInSearch(redirectTo: string) {

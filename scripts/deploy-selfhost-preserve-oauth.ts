@@ -7,7 +7,7 @@ import * as Workers from "@distilled.cloud/cloudflare/workers";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as FetchHttpClient from "effect/unstable/http/FetchHttpClient";
-import { workerName } from "../alchemy.access.ts";
+import { workerName } from "../deploy/alchemy/alchemy.access.ts";
 import {
   captureManagedOAuth,
   restoreManagedOAuth,
@@ -104,6 +104,7 @@ try {
   run("pnpm", [
     "alchemy",
     "deploy",
+    "deploy/alchemy/alchemy.run.ts",
     "--env-file",
     envFile,
     "--stage",

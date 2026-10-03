@@ -7,8 +7,7 @@ import { withMcpProjectAuth } from "@/server/mcp/project-auth";
 import { formatMcpTable, type McpTableColumn } from "@/server/mcp/table";
 import { projectIdSchema } from "@/server/mcp/schemas";
 import { buildDashboardUrl } from "@/server/mcp/urls";
-import { hasSelfHostedGoogleOAuthConfig } from "@/server/features/google/oauth-config";
-import { isHostedServerAuthMode } from "@/server/lib/runtime-env";
+import { hasGoogleOAuthConfig } from "@/server/features/google/oauth-config";
 import { GscService } from "@/server/features/gsc/services/GscService";
 import {
   GSC_DATE_RANGES,
@@ -65,17 +64,13 @@ function connectGscUrl(baseUrl: string, projectId: string): string {
 }
 
 /** Self-hosted GSC requires the operator to provide a Google OAuth client and
- *  BETTER_AUTH_SECRET. Hosted mode always has both; self-hosted tools return this
- *  setup nudge before attempting a token lookup when either is missing. */
+ *  BETTER_AUTH_SECRET. Return this setup nudge before attempting a token lookup
+ *  when either is missing. */
 async function missingSelfHostedGoogleClientResponse(
   context: ProjectAuthContext,
   projectId: string,
 ) {
-  const [hosted, configured] = await Promise.all([
-    isHostedServerAuthMode(),
-    hasSelfHostedGoogleOAuthConfig(),
-  ]);
-  if (hosted || configured) return null;
+  if (await hasGoogleOAuthConfig()) return null;
 
   return mcpResponse({
     text: `This self-hosted OpenSEO deployment is not configured for Search Console yet. Set GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and BETTER_AUTH_SECRET, then reconnect Search Console from the project's settings page. Setup docs: ${GSC_SELF_HOSTED_SETUP_DOCS_URL}`,
@@ -264,7 +259,7 @@ export const getSearchConsolePerformanceTool = {
     description:
       "Query the connected Search Console property's Search Analytics: clicks, impressions, CTR, and average position by query/page/country/device/date. First-party data — use it for what already ranks, near-ranking queries, and pages with real demand. Google sorts by clicks and can't filter by position, so minPosition/maxPosition/minImpressions are applied server-side over the top 1000 rows of the window — use them instead of fetching everything. ctr is a 0-1 fraction; position is a 1-based average and is omitted from rows when type is 'discover' or 'googleNews' (Google does not report it there — treat it as unavailable, not a failure); dates are Pacific Time; the last ~3 days may be incomplete. Read-only; uses no credits.",
     inputSchema: perfInputSchema,
-    outputSchema: {
+    outputSchema: z.looseObject({
       ok: z.boolean(),
       reason: z.string().optional(),
       connectUrl: z.string().optional(),
@@ -293,7 +288,7 @@ export const getSearchConsolePerformanceTool = {
       hasMore: z.boolean().optional(),
       nextStartRow: z.number().optional(),
       ...optionalMetaOutputSchema,
-    },
+    }),
     annotations: {
       readOnlyHint: true,
       openWorldHint: false,
@@ -438,7 +433,7 @@ export const inspectUrlsTool = {
     description:
       "Run Google Search Console's URL Inspection on up to 10 URLs of the connected property: index/coverage state, last crawl time, Google-selected vs declared canonical, and mobile/rich-results verdicts. Use it to answer 'is this page indexed? why not?'. Per-URL failures are reported inline. Read-only; uses no credits.",
     inputSchema: inspectInputSchema,
-    outputSchema: {
+    outputSchema: z.looseObject({
       ok: z.boolean(),
       reason: z.string().optional(),
       connectUrl: z.string().optional(),
@@ -456,7 +451,7 @@ export const inspectUrlsTool = {
         )
         .optional(),
       ...optionalMetaOutputSchema,
-    },
+    }),
     annotations: {
       readOnlyHint: true,
       openWorldHint: false,
