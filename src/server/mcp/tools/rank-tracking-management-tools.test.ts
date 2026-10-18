@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { addRankTrackingKeywordsTool } from "./add-rank-tracking-keywords";
 import { createRankTrackerTool } from "./create-rank-tracker";
+import { getRankTrackerTool } from "./get-rank-tracker";
 import { runRankTrackerTool } from "./run-rank-tracker";
 import { makeToolContext, textContent } from "./tool-test-support";
 
@@ -95,6 +96,30 @@ describe("rank tracking management MCP tools", () => {
     });
   });
 
+  it("returns the live Google SERP link in both the text and the structured rows", async () => {
+    mocks.getTracker.mockResolvedValue({
+      config: {
+        ...createdConfig,
+        serpDepth: 40,
+        locationCode: 2276,
+        languageCode: "de",
+        locationName: null,
+      },
+      results: { rows: [{ keyword: "seo tool" }], run: null },
+    });
+
+    const result = await getRankTrackerTool.handler(
+      { projectId, trackerId },
+      toolContext,
+    );
+
+    const url = "https://www.google.com/search?q=seo+tool&hl=de&gl=de&pws=0";
+    expect(textContent(result)).toContain(url);
+    expect(result.structuredContent).toMatchObject({
+      results: { rows: [{ googleSerpUrl: url }] },
+    });
+  });
+
   it("requires maxCostCredits to run a rank tracker", () => {
     expect(
       z.object(runRankTrackerTool.config.inputSchema).safeParse({
@@ -102,6 +127,50 @@ describe("rank tracking management MCP tools", () => {
         trackerId,
       }).success,
     ).toBe(false);
+  });
+
+  it("keeps existing machine dashboards complete without changing human or explicit pagination", async () => {
+    mocks.getTracker.mockResolvedValue({
+      config: { ...createdConfig, locationCode: 2840, languageCode: "en" },
+      results: {
+        rows: Array.from({ length: 101 }, (_, index) => ({
+          trackingKeywordId: `keyword-${index}`,
+          keyword: `Keyword ${index}`,
+        })),
+        run: null,
+      },
+    });
+    const readOnlyContext = makeToolContext({ readOnly: true });
+    const machine = await getRankTrackerTool.handler(
+      { projectId, trackerId },
+      readOnlyContext,
+    );
+    const human = await getRankTrackerTool.handler(
+      { projectId, trackerId },
+      toolContext,
+    );
+    const explicit = await getRankTrackerTool.handler(
+      { projectId, trackerId, limit: 10 },
+      readOnlyContext,
+    );
+    expect(machine.structuredContent).toMatchObject({
+      results: { totalCount: 101, nextOffset: null },
+    });
+    expect(human.structuredContent).toMatchObject({
+      results: { totalCount: 101, nextOffset: 100 },
+    });
+    expect(explicit.structuredContent).toMatchObject({
+      results: { totalCount: 101, nextOffset: 10 },
+    });
+    expect(machine.structuredContent).toHaveProperty(
+      "results.rows.length",
+      101,
+    );
+    expect(human.structuredContent).toHaveProperty("results.rows.length", 100);
+    expect(explicit.structuredContent).toHaveProperty(
+      "results.rows.length",
+      10,
+    );
   });
 
   it("adds keywords under the credit-ceiling approval and reports the confirmed count", async () => {

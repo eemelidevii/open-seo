@@ -24,6 +24,14 @@ export const AUDIT_ISSUE_TYPES = {
     howToFix:
       'If you own this site, allowlist the "OpenSEO-Audit" user agent in your WAF/bot-protection settings (on Cloudflare: a WAF custom rule that skips bot protection when the user agent contains "OpenSEO-Audit"; on some free tiers you may need to relax bot protection). Then re-run the audit. On Shopify, use Crawler access instead (Online Store → Preferences → Crawler access) and paste the signature into OpenSEO under Settings → Crawler access.',
   },
+  "javascript-rendering-suspected": {
+    severity: "warning",
+    title: "Content may require JavaScript",
+    explanation:
+      "The page's HTML contains a JavaScript app container with very little readable content and no headings, links, or images. The page may load its content in the browser, or it was still loading when rendered. Content checks were skipped because this HTML may not represent the complete page.",
+    howToFix:
+      'If this audit did not render JavaScript, start a new audit with "Render JavaScript" enabled to check the loaded content. For reliable crawling, serve important content and navigation in the initial HTML using server-side rendering or prerendering. This warning does not prove that search engines cannot index the page.',
+  },
   "rate-limited-page": {
     severity: "warning",
     title: "Rate limited (429)",

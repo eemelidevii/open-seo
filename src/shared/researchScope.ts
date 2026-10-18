@@ -75,8 +75,7 @@ export type ResearchTarget = {
 };
 
 type ParseResearchTargetResult =
-  | { ok: true; target: ResearchTarget }
-  | { ok: false; message: string };
+  { ok: true; target: ResearchTarget } | { ok: false; message: string };
 
 function normalizePath(pathname: string): string {
   if (pathname === "/") return "";

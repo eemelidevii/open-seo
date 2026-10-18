@@ -21,7 +21,7 @@ export function keywordResearchPageEnds(
   pageSize: number,
 ) {
   const ends: number[] = [];
-  for (let start = 0; start < rows.length; ) {
+  for (let start = 0; start < rows.length;) {
     let end = Math.min(start + pageSize, rows.length);
     // Finish the last family before starting the next page.
     while (end < rows.length && rows[end].parentKeyword !== null) end++;

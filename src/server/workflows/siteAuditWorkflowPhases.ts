@@ -20,6 +20,7 @@ import { runMultipageChecks } from "@/server/lib/audit/issues/multipage";
 import type { DetectedIssue } from "@/server/lib/audit/issues/page-reporters";
 import type { AuditConfig } from "@/server/lib/audit/types";
 import type { CrawlerAccess } from "@/shared/crawler-access";
+import type { RenderUsage } from "@/shared/audit-rendering";
 import { captureServerEvent } from "@/server/lib/posthog";
 import {
   runCrawlPhase,
@@ -51,6 +52,7 @@ type AuditPhasesParams = {
   startUrl: string;
   config: AuditConfig;
   access?: CrawlerAccess | null;
+  renderUsage: RenderUsage;
 };
 
 export async function runAuditPhases(
@@ -65,6 +67,7 @@ export async function runAuditPhases(
     startUrl,
     config,
     access,
+    renderUsage,
   } = params;
   const origin = getOrigin(startUrl);
   const maxPages = config.maxPages;
@@ -88,6 +91,8 @@ export async function runAuditPhases(
     maxPages,
     robots,
     seededCount: discovery.seededCount,
+    renderJavaScript: config.renderJavaScript,
+    renderUsage,
     access,
   });
   await runLighthousePhase(step, {
@@ -297,7 +302,7 @@ async function selectLighthousePages(params: {
     const crawledPages = await AuditRepository.getPagesForAudit(auditId);
     const sample = selectLighthouseSample(
       crawledPages.map((page) => ({
-        url: page.url,
+        ...page,
         statusCode: page.statusCode ?? 0,
       })),
       startUrl,
@@ -357,14 +362,17 @@ async function finalizeAudit(args: {
 
     const checksStartedAt = Date.now();
     console.info("Audit finalization started", { auditId });
-    const issues = await runMultipageChecks({ auditId });
+    const { issues, hasUnreadShells } = await runMultipageChecks({ auditId });
     console.info("Audit multipage checks completed", {
       auditId,
       durationMs: Date.now() - checksStartedAt,
       issueCount: issues.length,
     });
     const linksStartedAt = Date.now();
-    const linkIssues = await runScratchpadLinkChecks(auditId, startUrl, crawl);
+    const linkIssues = await runScratchpadLinkChecks(auditId, startUrl, {
+      ...crawl,
+      completed: crawl.completed && !hasUnreadShells,
+    });
     console.info("Audit link checks completed", {
       auditId,
       durationMs: Date.now() - linksStartedAt,

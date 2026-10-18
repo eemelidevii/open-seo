@@ -24,8 +24,7 @@ export function getDatabaseProvider(): DatabaseProvider {
 // Hyperdrive), so the same code path covers both.
 export function getPostgresConnectionString() {
   const hyperdrive = Reflect.get(env, "HYPERDRIVE") as
-    | { connectionString?: string }
-    | undefined;
+    { connectionString?: string } | undefined;
   const hyperdriveUrl = hyperdrive?.connectionString?.trim();
   if (hyperdriveUrl) {
     return hyperdriveUrl;

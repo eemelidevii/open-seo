@@ -8,7 +8,7 @@ type ManagedOAuth = NonNullable<
   ZeroTrust.UpdateAccessApplicationForAccountRequest["oauthConfiguration"]
 >;
 
-export type ManagedOAuthSnapshot = {
+type ManagedOAuthSnapshot = {
   appId: string;
   oauth: ManagedOAuth;
 };

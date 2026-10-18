@@ -10,11 +10,7 @@ import type { ScopeFilter } from "@/server/lib/dataforseo/researchScopeFilters";
 import type { DomainKeywordsFilters } from "@/types/schemas/domain";
 
 export type DomainKeywordsSortMode =
-  | "rank"
-  | "traffic"
-  | "volume"
-  | "score"
-  | "cpc";
+  "rank" | "traffic" | "volume" | "score" | "cpc";
 export type DomainKeywordsSortOrder = "asc" | "desc";
 
 const SORT_FIELD_BY_MODE: Record<DomainKeywordsSortMode, string> = {

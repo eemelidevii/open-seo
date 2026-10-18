@@ -5,8 +5,7 @@
 export const MIN_BETTER_AUTH_SECRET_LENGTH = 32;
 
 type TeamDomainResult =
-  | { ok: true; origin: string }
-  | { ok: false; message: string };
+  { ok: true; origin: string } | { ok: false; message: string };
 
 export function validateTeamDomain(value: string): TeamDomainResult {
   const normalized = value.trim().replace(/\/+$/, "");
