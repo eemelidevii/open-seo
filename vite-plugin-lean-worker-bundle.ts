@@ -146,6 +146,21 @@ export function leanWorkerBundle(): Plugin {
         return;
       }
 
+      // Security boundary for GHSA-hp3w-g68c-fv3c: the disabled bash tool
+      // cannot ship its unpatched formatter, even behind a dynamic import.
+      if (["ssr", "open_seo_audit"].includes(environment)) {
+        for (const output of Object.values(bundle)) {
+          if (
+            output.type === "chunk" &&
+            output.moduleIds.some((id) =>
+              /node_modules\/(just-bash|sprintf-js)\//.test(id),
+            )
+          ) {
+            this.error("Disabled bash dependencies entered a Worker bundle.");
+          }
+        }
+      }
+
       // Bundle keys are chunk fileNames already.
       const chunkAt = (fileName: string) => {
         const output = bundle[fileName];
