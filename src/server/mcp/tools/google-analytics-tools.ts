@@ -307,13 +307,11 @@ function comparisonSection(comparison: Ga4ReportResult["comparison"]): string {
         value: (row) => row.dimensions[dimension],
       }),
     ),
-    ...comparison.metrics.map(
-      (metric): McpTableColumn<Ga4ComparisonRow> => ({
-        header: metric,
-        value: (row) => row.metrics[metric],
-        format: deltaCell,
-      }),
-    ),
+    ...comparison.metrics.map((metric): McpTableColumn<Ga4ComparisonRow> => ({
+      header: metric,
+      value: (row) => row.metrics[metric],
+      format: deltaCell,
+    })),
   ];
   return section(
     `Compared with ${range.startDate} through ${range.endDate} (current vs previous${truncated})`,
@@ -388,12 +386,10 @@ function trendSection(result: Ga4OverviewResult): string {
   const dimension = weekly ? "yearWeek" : "date";
   const columns: McpTableColumn<Ga4TrendRow>[] = [
     { header: dimension, value: (row) => row[dimension] },
-    ...OVERVIEW_METRICS.map(
-      (metric): McpTableColumn<Ga4TrendRow> => ({
-        header: metric,
-        value: (row) => row[metric],
-      }),
-    ),
+    ...OVERVIEW_METRICS.map((metric): McpTableColumn<Ga4TrendRow> => ({
+      header: metric,
+      value: (row) => row[metric],
+    })),
   ];
   return section(
     weekly ? "Weekly trend" : "Daily trend",

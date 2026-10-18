@@ -6,11 +6,7 @@ import {
 import { supportsWebSearchCountry } from "@/shared/prompt-search-countries";
 
 export type AiEngine =
-  | "chatgpt"
-  | "gemini"
-  | "google_ai_overview"
-  | "claude"
-  | "perplexity";
+  "chatgpt" | "gemini" | "google_ai_overview" | "claude" | "perplexity";
 export const AI_ENGINE_LABELS: Record<AiEngine, string> = {
   chatgpt: "ChatGPT",
   gemini: "Gemini",
@@ -267,11 +263,7 @@ export interface AiTrendMetric {
   previousCells: number;
 }
 export type AiTrendComparison =
-  | "comparable"
-  | "incomplete"
-  | "scope_changed"
-  | "no_previous"
-  | "no_data";
+  "comparable" | "incomplete" | "scope_changed" | "no_previous" | "no_data";
 export interface AiTrend {
   days: number;
   comparison: AiTrendComparison;

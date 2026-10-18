@@ -20,8 +20,7 @@ import type { BillingCustomerContext } from "@/server/billing/subscription";
 // One binding serves answer collection runs and the one-time research setup,
 // so setup needs no new workflow infrastructure.
 type AiVisibilityPayload = (
-  | { runId: string }
-  | { setupProjectId: string; runSeededTracking?: boolean }
+  { runId: string } | { setupProjectId: string; runSeededTracking?: boolean }
 ) & {
   customer: BillingCustomerContext;
 };
