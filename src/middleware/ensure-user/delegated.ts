@@ -84,11 +84,21 @@ export async function resolveSharedWorkspaceContext(
   userId: string,
   userEmail: string,
 ): Promise<EnsuredUserContext> {
-  const ensuredEmail = await ensureUserRecord(userId, userEmail);
+  // Access has already verified the email and the configured issuer/audience.
+  // Moving to another Access account (or rotating the MCP service token)
+  // changes its subject. Keep the existing user ID and its encrypted grants.
+  const existing = await db.query.user.findFirst({
+    columns: { id: true },
+    where: eq(user.email, userEmail),
+  });
+  const resolvedUserId = existing?.id ?? userId;
+  const ensuredEmail = existing
+    ? userEmail
+    : await ensureUserRecord(userId, userEmail);
   const organizationId = await ensureSharedWorkspaceOrganization();
 
   return {
-    userId,
+    userId: resolvedUserId,
     userEmail: ensuredEmail,
     emailVerified: true,
     organizationId,

@@ -339,6 +339,11 @@ export default Alchemy.Stack(
     );
     const databaseProvider = yield* optionalVar("DATABASE_PROVIDER");
     const workersSubdomain = yield* readWorkersSubdomain({ required: false });
+    // Account migrations validate a restored copy before handing off cron
+    // ownership. Keep the destination idle until the source is stopped.
+    const schedulesEnabled = yield* Config.boolean(
+      "OPENSEO_SCHEDULES_ENABLED",
+    ).pipe(Config.withDefault(true));
 
     // Auth needs an absolute BETTER_AUTH_URL. Prod sets it explicitly;
     // previews always derive it from the deterministic worker name — a wrong
@@ -477,7 +482,7 @@ export default Alchemy.Stack(
       placement:
         wrangler.placement?.mode === "smart" ? { mode: "smart" } : undefined,
       // Scheduled rank checks — src/server.ts `scheduled` handler.
-      crons: wrangler.triggers.crons,
+      crons: schedulesEnabled ? wrangler.triggers.crons : [],
       env: {
         ...resources,
         ...dataEnv,

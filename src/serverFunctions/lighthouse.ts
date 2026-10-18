@@ -26,12 +26,9 @@ async function getAuditLighthouseData(input: {
   }
 
   const r2Key = site.lighthouse.r2Key;
-  if (!r2Key) {
-    throw new AppError("NOT_FOUND");
-  }
-
-  const payloadJson = await getJsonFromR2(r2Key);
-  const payload = readStoredLighthousePayload(payloadJson);
+  const payloadJson = r2Key ? await getJsonFromR2(r2Key) : null;
+  const payload =
+    payloadJson === null ? null : readStoredLighthousePayload(payloadJson);
 
   return {
     id: site.lighthouse.id,
@@ -40,6 +37,12 @@ async function getAuditLighthouseData(input: {
     createdAt: site.audit.startedAt,
     payloadJson,
     payload,
+    savedScores: {
+      performance: site.lighthouse.performanceScore,
+      accessibility: site.lighthouse.accessibilityScore,
+      "best-practices": site.lighthouse.bestPracticesScore,
+      seo: site.lighthouse.seoScore,
+    },
   };
 }
 
@@ -55,14 +58,16 @@ export const getAuditLighthouseIssues = createServerFn({ method: "POST" })
     return {
       id: lighthouse.id,
       finalUrl:
-        lighthouse.payload.storedPayload?.metadata.finalUrl ??
+        lighthouse.payload?.storedPayload?.metadata.finalUrl ??
         lighthouse.finalUrl,
       strategy: lighthouse.strategy,
       createdAt: lighthouse.createdAt,
-      hasIssueDetails: lighthouse.payload.report.hasIssueDetails,
-      scores: lighthouse.payload.storedPayload?.scores ?? null,
-      metrics: lighthouse.payload.storedPayload?.metrics ?? null,
-      issues: lighthouse.payload.report.issues,
+      payloadAvailable: lighthouse.payloadJson !== null,
+      hasIssueDetails: lighthouse.payload?.report.hasIssueDetails ?? false,
+      scores:
+        lighthouse.payload?.storedPayload?.scores ?? lighthouse.savedScores,
+      metrics: lighthouse.payload?.storedPayload?.metrics ?? null,
+      issues: lighthouse.payload?.report.issues ?? [],
     };
   });
 
@@ -74,6 +79,10 @@ export const exportAuditLighthouseIssues = createServerFn({ method: "POST" })
       projectId: context.projectId,
       resultId: data.resultId,
     });
+
+    if (lighthouse.payloadJson === null) {
+      throw new AppError("NOT_FOUND");
+    }
 
     return buildLighthouseExportFile({
       idField: "resultId",
