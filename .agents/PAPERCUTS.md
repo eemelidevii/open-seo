@@ -10,8 +10,6 @@ data, or sensitive paths.
 
 ## Open
 
-- [ ] `2026-10-18T18:31:02Z` — `codex` — The self-host release branch at `615252db` fails `ci:check` on 16 existing Prettier files, and Knip separately flags its unchanged `ManagedOAuthSnapshot` export. Reconcile the release baseline formatting and private type export so unrelated self-host fixes can use the complete gate; affected files are unchanged in account-migration PR #1.
-
 - [ ] `2026-10-06T04:32:17Z` — `claude` — `npm --prefix web run types:check` (the web-content skill's final check) fails on a fresh worktree with only `web/` deps installed: `web/tsconfig.json` includes `**/*.ts`, so it type-checks `web/tests/free-tool-verification.spec.ts`, which imports the root-only `@playwright/test` and reports TS2307 plus a dozen implicit-any errors unrelated to the change. Add `@playwright/test` to `web` devDependencies or exclude that spec from `web/tsconfig.json`.
 - [ ] `2026-09-30T23:24:29Z` — `claude` — An `ENV_PREVIEW` secret without `AUTH_MODE=local_noauth` makes the PR preview deploy fall back to `cloudflare_access`, which provisions a self-host Access app. The deploy then fails with "Could not read the Zero Trust organization: Unauthorized", because the CI token has no Access permissions. The error suggests `pnpm alchemy login --configure`, which cannot fix CI. Check `AUTH_MODE` in the workflow's "Derive preview URL" step, beside the existing `WORKERS_SUBDOMAIN` check.
 - [ ] `2026-09-30T22:10:17Z` — `claude` — Since #784 moved `@tanstack/react-start` to 1.168.60, `pnpm vite build` rewrites the committed `src/routeTree.gen.ts` with a new import order (about 1,000 changed lines, identical routes), which leaves every local build with a dirty tree. Commit the regenerated file on main once.
@@ -38,6 +36,8 @@ data, or sensitive paths.
 - `2026-07-19T02:55:56Z` — `claude` — Docs folders with an explicit Overview link need their index removed by the allowlist in `web/src/lib/source.ts`. Both current folders using that convention are covered as of 2026-09-05; revisit when adding another such section, rather than generalizing navigation now.
 
 ## Resolved
+
+- [x] `2026-10-18T18:31:02Z` — `codex` — The self-host release baseline failed formatting on 16 unchanged files and Knip flagged the unused `ManagedOAuthSnapshot` export. Resolved 2026-10-18 during the v0.1.13 upgrade: normalized the files with the retained formatter and made the type private; formatting and Knip passed in CI.
 
 - [x] `2026-09-17T18:50:14Z` — `codex` — Fumadocs MDX 11 compiles `.md?raw` imports into components, so shared prompt imports pass type checking but crash docs rendering with `trim is not a function`. Resolved 2026-09-17: the web Vite config leaves `?raw` imports to Vite; browser-check shared Markdown prompts when changing this integration.
 

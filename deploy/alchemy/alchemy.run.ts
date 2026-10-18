@@ -257,13 +257,12 @@ const resolveSelfHostAccess = (
         serviceClientId,
         serviceEmail,
       );
-      const domain = `${workerName(stage)}.${subdomain}`;
       const application = yield* emailAccessGate({
         policyId: "SelfHostAllowUsers",
         applicationId: "SelfHostAccess",
         policyName: `open-seo ${stage} self-host users`,
         applicationName: `open-seo ${stage}`,
-        domain,
+        domain: `${workerName(stage)}.${subdomain}`,
         emails: allowedEmails,
         serviceTokenId: serviceTokenId || undefined,
         // The identity provider belongs to the long-lived selfhost stack.
