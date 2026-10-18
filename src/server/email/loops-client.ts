@@ -2,12 +2,7 @@ const LOOPS_CONTACT_UPDATE_URL = "https://app.loops.so/api/v1/contacts/update";
 const LOOPS_EVENT_SEND_URL = "https://app.loops.so/api/v1/events/send";
 
 type LoopsContactProperty =
-  | string
-  | number
-  | boolean
-  | null
-  | undefined
-  | Record<string, boolean>;
+  string | number | boolean | null | undefined | Record<string, boolean>;
 
 type LoopsContactUpdatePayload = {
   email?: string;

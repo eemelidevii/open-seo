@@ -1,7 +1,4 @@
-import {
-  CLIENT_INFO_META_KEY,
-  type ServerContext,
-} from "@modelcontextprotocol/server";
+import type { ServerContext } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import type { BillingCustomerContext } from "@/server/billing/subscription";
 import { resolveClientLabel } from "@/server/mcp/client-label";
@@ -26,6 +23,8 @@ export type ToolAuthContext = {
   orgScope: "pinned" | "user";
   scopes: string[];
   clientId: string | null;
+  // Set by the verified Access service transport, matching its tool allowlist.
+  readOnly?: boolean;
   baseUrl: string;
   // Which client made the call ("Claude Code", "Codex", "API key", …), for
   // display only — a self-reported hint, never an identity. Reports stamp it
@@ -107,6 +106,11 @@ export function createWorkersOAuthMcpProps(
 // `mcpReq.envelope` before any handler runs — so the envelope is the only place
 // to look. It is client-supplied and typed as an open envelope, so parse it
 // rather than reaching into it.
+//
+// The SDK's CLIENT_INFO_META_KEY, spelled out: a value import from
+// @modelcontextprotocol/server would evaluate the whole SDK, protocol schemas
+// included, at worker startup, and this module is on the eager path.
+const CLIENT_INFO_META_KEY = "io.modelcontextprotocol/clientInfo";
 const clientInfoMetaSchema = z.object({
   [CLIENT_INFO_META_KEY]: z.object({ title: z.string().optional() }).optional(),
 });

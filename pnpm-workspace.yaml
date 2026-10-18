@@ -41,6 +41,14 @@ minimumReleaseAgeExclude:
   - "alchemy"
   - "@distilled.cloud/*"
 
+# Not shipped: workspaceBash is disabled and both Worker builds replace
+# just-bash with a stub. The bundle guard rejects just-bash and sprintf-js in
+# every Worker chunk. No fixed sprintf-js release exists; review before
+# enabling bash or changing that boundary (GHSA-hp3w-g68c-fv3c).
+auditConfig:
+  ignoreGhsas:
+    - GHSA-hp3w-g68c-fv3c
+
 # Security floors for transitive dependencies with published advisories.
 # Overrides outside a parent's declared range are scoped and noted below. Ranges are
 # major-bounded (^) on purpose: an override REPLACES the parent's range, so an
@@ -57,6 +65,11 @@ overrides:
   "@better-auth/core": "1.6.22"
   "@better-auth/utils": "0.4.2"
   better-call: "1.3.7"
+  # GHSA-6qxp-vccf-f47h — Agents still declares the client and v1 SDK as peers.
+  "@modelcontextprotocol/client": "2.2.0"
+  "@modelcontextprotocol/sdk": "1.31.0"
+  # GHSA-jqcg-44mw-7w3h — the legacy SDK's Express dependency.
+  proxy-addr: "^2.0.8"
   # GHSA-4x5r-pxfx-6jf8 — waiting on @tanstack/devtools-vite
   "@babel/core": "^7.29.6"
   # September 2026 recursion/CPU DoS fixes plus earlier advisories — just-bash/shadcn
@@ -81,8 +94,12 @@ overrides:
   qs: "^6.16.0"
   # GHSA-w7jw-789q-3m8p — waiting on @tanstack/devtools-vite
   shell-quote: "^1.8.4"
-  # GHSA-v3rj-xjv7-4jmq — waiting on knip
-  smol-toml: "^1.7.1"
+  # GHSA-r4xh-jqrq-34v2 plus earlier parser fixes — just-bash/knip
+  smol-toml: "^1.9.0"
+  # GHSA-p6vx-979v-rg4c and GHSA-jp82-f5mq-hwhp — Solid's auth client
+  seroval: "^1.6.3"
+  # GHSA-68fv-2mgg-jv7q — Vite/PostCSS source-map parsing
+  source-map-js: "^1.2.2"
   # September 2026 TLS/cache/DoS fixes plus earlier advisories — cheerio/miniflare
   undici: "^7.29.1"
   # GHSA-67mh-4wv8-2f99 — update drizzle-kit's legacy loader instead of ignoring it.
@@ -101,3 +118,9 @@ overrides:
   mysql2: "^3.23.1"
   "nanoid@3": "^3.3.18"
   "toml@4": "^4.2.0"
+
+# Cloudflare echoes targeted placement back as `{ mode: "targeted" }` without
+# `region`; 0.28.2's response schema requires it, so alchemy fails a deploy
+# that actually succeeded. Fixed upstream in 1.0.0-rc; drop on upgrade.
+patchedDependencies:
+  "@distilled.cloud/cloudflare@0.28.2": patches/@distilled.cloud__cloudflare@0.28.2.patch

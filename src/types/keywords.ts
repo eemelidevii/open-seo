@@ -1,9 +1,5 @@
 export type KeywordIntent =
-  | "informational"
-  | "commercial"
-  | "transactional"
-  | "navigational"
-  | "unknown";
+  "informational" | "commercial" | "transactional" | "navigational" | "unknown";
 
 export type MonthlySearch = {
   year: number;

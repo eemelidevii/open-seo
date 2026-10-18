@@ -63,8 +63,7 @@ async function addKeywords(
     ? config.scheduleInterval
     : null;
   let scheduledEstimate:
-    | ReturnType<typeof estimateScheduledRankCheckCredits>
-    | undefined;
+    ReturnType<typeof estimateScheduledRankCheckCredits> | undefined;
   if (rows.length > 0 && scheduleInterval) {
     scheduledEstimate = estimateScheduledRankCheckCredits(
       [...existing, ...rows].map((kw) => kw.keyword),
@@ -125,6 +124,21 @@ async function removeKeywords(
     configId,
   );
   return { removed: removedIds.length, removedIds };
+}
+
+async function setKeywordsPinned(
+  configId: string,
+  projectId: string,
+  keywordIds: string[],
+  pinned: boolean,
+) {
+  await getValidatedConfig(configId, projectId);
+  const updatedIds = await RankTrackingRepository.setKeywordsPinned(
+    [...new Set(keywordIds)],
+    configId,
+    pinned,
+  );
+  return { updated: updatedIds.length, updatedIds };
 }
 
 async function estimateCost(
@@ -195,5 +209,6 @@ function scheduledApprovalError(
 export const RankTrackingKeywordService = {
   addKeywords,
   removeKeywords,
+  setKeywordsPinned,
   estimateCost,
 };

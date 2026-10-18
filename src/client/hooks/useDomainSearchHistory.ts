@@ -33,13 +33,11 @@ const domainSearchHistoryItemSchema = z
     locationCode: z.number().int().positive().optional(),
     timestamp: z.number(),
   })
-  .transform(
-    ({ subdomains, scope, ...item }): DomainSearchHistoryItem => ({
-      ...item,
-      // Legacy items always carried the boolean, so scope-less means true.
-      scope: scope ?? (subdomains === false ? "domain" : "subdomains"),
-    }),
-  );
+  .transform(({ subdomains, scope, ...item }): DomainSearchHistoryItem => ({
+    ...item,
+    // Legacy items always carried the boolean, so scope-less means true.
+    scope: scope ?? (subdomains === false ? "domain" : "subdomains"),
+  }));
 
 const domainSearchHistorySchema = z.array(domainSearchHistoryItemSchema);
 const domainSearchHistoryCodec = jsonCodec(domainSearchHistorySchema);

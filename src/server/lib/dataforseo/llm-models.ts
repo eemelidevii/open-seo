@@ -3,10 +3,7 @@ import { dataforseoGet } from "@/server/lib/dataforseo/core";
 import { assertOk } from "@/server/lib/dataforseo/envelope";
 
 export type LlmResponseModelSlug =
-  | "chat_gpt"
-  | "claude"
-  | "gemini"
-  | "perplexity";
+  "chat_gpt" | "claude" | "gemini" | "perplexity";
 
 /**
  * Model names come from DataForSEO's FREE ($0) per-provider catalog
@@ -48,6 +45,9 @@ const FALLBACK_MODEL_NAMES: Record<LlmResponseModelSlug, string[]> = {
  */
 const PINNED_MODEL_NAMES: Partial<Record<LlmResponseModelSlug, string>> = {
   chat_gpt: "gpt-5.6-luna",
+  // The catalog lists claude-sonnet-5-5, but its live calls fail with 50000
+  // "Internal Error" while claude-sonnet-5 answers (verified 2026-10-07).
+  claude: "claude-sonnet-5",
 };
 
 /**

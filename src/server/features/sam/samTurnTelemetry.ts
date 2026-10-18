@@ -7,11 +7,7 @@ import type { UIMessage } from "ai";
 import { captureServerError, captureServerEvent } from "@/server/lib/posthog";
 
 type SamTurnStatus =
-  | "completed"
-  | "aborted"
-  | "error"
-  | "refused"
-  | "interrupted";
+  "completed" | "aborted" | "error" | "refused" | "interrupted";
 
 type SamRefusalReason = "no_session" | "credits" | "no_access";
 

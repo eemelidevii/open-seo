@@ -4,7 +4,12 @@ import { buildProjectMeta } from "@/server/mcp/context";
 import { mcpResponse } from "@/server/mcp/formatters";
 import { optionalMetaOutputSchema } from "@/server/mcp/output-schemas";
 import { withMcpProjectAuth } from "@/server/mcp/project-auth";
-import { formatMcpTable, type McpTableColumn } from "@/server/mcp/table";
+import {
+  formatMcpTable,
+  percentCell,
+  positionCell,
+  type McpTableColumn,
+} from "@/server/mcp/table";
 import { projectIdSchema } from "@/server/mcp/schemas";
 import { buildDashboardUrl } from "@/server/mcp/urls";
 import { hasGoogleOAuthConfig } from "@/server/features/google/oauth-config";
@@ -19,13 +24,12 @@ import {
   type GscPerformanceInput,
 } from "@/server/features/gsc/searchAnalytics";
 import {
+  GSC_API_DISABLED_MESSAGE,
   GscApiError,
   GscNotConnectedError,
   GscTokenError,
 } from "@/server/lib/gscErrors";
 import { GSC_SELF_HOSTED_SETUP_DOCS_URL } from "@/shared/gsc";
-
-const TEXT_SUMMARY_ROWS = 15;
 
 type GscPerfRow = {
   keys?: string[];
@@ -39,17 +43,8 @@ const GSC_PERF_COLUMNS: McpTableColumn<GscPerfRow>[] = [
   { header: "key", value: (row) => row.keys?.join(" / ") ?? "(total)" },
   { header: "clicks", value: (row) => row.clicks },
   { header: "impressions", value: (row) => row.impressions },
-  {
-    header: "CTR",
-    value: (row) => row.ctr,
-    format: (value) =>
-      typeof value === "number" ? `${(value * 100).toFixed(1)}%` : "—",
-  },
-  {
-    header: "position",
-    value: (row) => row.position,
-    format: (value) => (typeof value === "number" ? value.toFixed(1) : "—"),
-  },
+  { header: "CTR", value: (row) => row.ctr, format: percentCell },
+  { header: "position", value: (row) => row.position, format: positionCell },
 ];
 
 type ProjectAuthContext = {
@@ -103,7 +98,9 @@ function describeGscError(error: unknown): string {
     return "The Search Console connection has expired or was revoked. Reconnect it to continue.";
   }
   if (error instanceof GscApiError) {
-    return error.message;
+    return error.apiDisabled
+      ? `${GSC_API_DISABLED_MESSAGE} Setup docs: ${GSC_SELF_HOSTED_SETUP_DOCS_URL}`
+      : error.message;
   }
   return error instanceof Error ? error.message : String(error);
 }
@@ -113,6 +110,7 @@ function gscFailureReason(error: unknown) {
   if (
     error instanceof GscTokenError ||
     (error instanceof GscApiError &&
+      !error.apiDisabled &&
       (error.status === 401 || error.status === 403))
   ) {
     return "authorization_required";
@@ -257,7 +255,7 @@ export const getSearchConsolePerformanceTool = {
   config: {
     title: "Get Google Search Console performance",
     description:
-      "Query the connected Search Console property's Search Analytics: clicks, impressions, CTR, and average position by query/page/country/device/date. First-party data — use it for what already ranks, near-ranking queries, and pages with real demand. Google sorts by clicks and can't filter by position, so minPosition/maxPosition/minImpressions are applied server-side over the top 1000 rows of the window — use them instead of fetching everything. ctr is a 0-1 fraction; position is a 1-based average and is omitted from rows when type is 'discover' or 'googleNews' (Google does not report it there — treat it as unavailable, not a failure); dates are Pacific Time; the last ~3 days may be incomplete. Read-only; uses no credits.",
+      "Query the connected Search Console property's Search Analytics: clicks, impressions, CTR, and average position by query/page/country/device/date. First-party data — use it for what already ranks, near-ranking queries, and pages with real demand. Google sorts by clicks and can't filter by position, so minPosition/maxPosition/minImpressions are applied server-side over the top 1000 rows of the window — use them instead of fetching everything. ctr is a 0-1 fraction; position is a 1-based average and is omitted from rows when type is 'discover' or 'googleNews' (Google does not report it there — treat it as unavailable, not a failure); dates are Pacific Time; the last ~3 days may be incomplete. Reads only the Search Console property already connected to an OpenSEO project the caller is authorized to access. The server selects the Google account and property from that project's saved connection. Read-only; uses no credits.",
     inputSchema: perfInputSchema,
     outputSchema: z.looseObject({
       ok: z.boolean(),
@@ -291,7 +289,7 @@ export const getSearchConsolePerformanceTool = {
     }),
     annotations: {
       readOnlyHint: true,
-      openWorldHint: false,
+      openWorldHint: true,
       destructiveHint: false,
     },
   },
@@ -369,7 +367,7 @@ export const getSearchConsolePerformanceTool = {
         : "";
       const header =
         `${result.siteUrl} · ${dimensions.join("+")} · ${result.request.startDate}→${result.request.endDate} · ` +
-        `${rows.length} row${rows.length === 1 ? "" : "s"}${filterText}${hasMore ? " (more available — paginate with startRow)" : ""}`;
+        `${rows.length} row${rows.length === 1 ? "" : "s"}${filterText}${hasMore ? ` (more available — call again with startRow=${nextStartRow})` : ""}`;
       const text =
         rows.length > 0
           ? `${header}\n${formatMcpTable(rows, GSC_PERF_COLUMNS)}`
@@ -409,6 +407,88 @@ export const getSearchConsolePerformanceTool = {
 // inspect_urls
 // ---------------------------------------------------------------------------
 
+const INSPECT_LIST_PREVIEW = 2;
+
+type UrlInspection = Awaited<
+  ReturnType<typeof GscService.inspectUrls>
+>["results"][number];
+
+/** Join `label: value` pairs into one compact line, dropping pairs Google
+ *  didn't report. Returns undefined when nothing survives, so the caller can
+ *  skip the line entirely instead of printing empty labels. */
+function detailLine(pairs: [string, string | undefined][]): string | undefined {
+  const rendered = pairs
+    .filter((pair): pair is [string, string] => Boolean(pair[1]))
+    .map(([label, value]) => `${label}: ${value}`);
+  return rendered.length > 0 ? rendered.join(" · ") : undefined;
+}
+
+/** Show the first couple of URLs plus a count so sitemap/referrer lists can't
+ *  dominate the block (the full arrays stay in structuredContent). */
+function listPreview(values: string[] | undefined): string | undefined {
+  if (!values || values.length === 0) return undefined;
+  const shown = values.slice(0, INSPECT_LIST_PREVIEW).join(", ");
+  const rest = values.length - INSPECT_LIST_PREVIEW;
+  return rest > 0 ? `${values.length} (${shown}, +${rest} more)` : shown;
+}
+
+/** A Google-selected canonical that differs from the declared one is the usual
+ *  answer to "why isn't my page indexed?", so call the mismatch out. */
+function canonicalSummary(
+  google: string | undefined,
+  user: string | undefined,
+): string | undefined {
+  if (google && user) {
+    return google === user
+      ? `${google} (declared canonical matches)`
+      : `MISMATCH — Google selected ${google}, page declares ${user}`;
+  }
+  if (google) return `Google selected ${google} (no declared canonical)`;
+  if (user) return `page declares ${user}`;
+  return undefined;
+}
+
+/** One block per inspected URL: the headline verdict plus the fields an SEO
+ *  acts on. Issue lists stay in structuredContent; sitemaps and referring
+ *  URLs are previewed. */
+function inspectionBlock(inspection: UrlInspection): string {
+  if (inspection.error) return `${inspection.url} — error: ${inspection.error}`;
+  if (!inspection.result) {
+    return `${inspection.url} — no inspection result returned.`;
+  }
+
+  const index = inspection.result.indexStatusResult;
+  const headline = `${inspection.url} — ${index?.verdict ?? "UNKNOWN"}: ${index?.coverageState ?? "no coverage state reported"}`;
+  const lines = [
+    detailLine([
+      ["robots.txt", index?.robotsTxtState],
+      ["indexing", index?.indexingState],
+      ["page fetch", index?.pageFetchState],
+    ]),
+    detailLine([
+      ["last crawl", index?.lastCrawlTime],
+      ["crawled as", index?.crawledAs],
+    ]),
+    detailLine([
+      [
+        "canonical",
+        canonicalSummary(index?.googleCanonical, index?.userCanonical),
+      ],
+    ]),
+    detailLine([
+      ["mobile usability", inspection.result.mobileUsabilityResult?.verdict],
+      ["rich results", inspection.result.richResultsResult?.verdict],
+    ]),
+    detailLine([
+      ["sitemaps", listPreview(index?.sitemap)],
+      ["referring URLs", listPreview(index?.referringUrls)],
+    ]),
+    detailLine([["details", inspection.result.inspectionResultLink]]),
+  ].filter((line) => line !== undefined);
+
+  return [headline, ...lines.map((line) => `  ${line}`)].join("\n");
+}
+
 const inspectInputSchema = {
   projectId: projectIdSchema,
   urls: z
@@ -431,7 +511,7 @@ export const inspectUrlsTool = {
   config: {
     title: "Inspect URLs in Google Search Console",
     description:
-      "Run Google Search Console's URL Inspection on up to 10 URLs of the connected property: index/coverage state, last crawl time, Google-selected vs declared canonical, and mobile/rich-results verdicts. Use it to answer 'is this page indexed? why not?'. Per-URL failures are reported inline. Read-only; uses no credits.",
+      "Read Google Search Console's existing index status for up to 10 URLs of the connected property: index/coverage state, last crawl time, Google-selected vs declared canonical, and mobile/rich-results verdicts. Use it to answer 'is this page indexed? why not?'. Google requires each URL to belong to that property. This does not run a live crawl. Per-URL failures are reported inline. Reads only the Search Console property already connected to an OpenSEO project the caller is authorized to access. The server selects the Google account and property from that project's saved connection. Read-only; uses no credits.",
     inputSchema: inspectInputSchema,
     outputSchema: z.looseObject({
       ok: z.boolean(),
@@ -454,7 +534,7 @@ export const inspectUrlsTool = {
     }),
     annotations: {
       readOnlyHint: true,
-      openWorldHint: false,
+      openWorldHint: true,
       destructiveHint: false,
     },
   },
@@ -479,19 +559,10 @@ export const inspectUrlsTool = {
         languageCode: args.languageCode,
       });
 
-      const summaryLines = results.slice(0, TEXT_SUMMARY_ROWS).map((r) => {
-        if (r.error) return `  ${r.url} — error: ${r.error}`;
-        const index = r.result?.indexStatusResult;
-        const verdict = index?.verdict ?? "UNKNOWN";
-        const coverage = index?.coverageState ?? "—";
-        const canonical = index?.googleCanonical
-          ? `, google-canonical ${index.googleCanonical}`
-          : "";
-        return `  ${r.url} — ${verdict}: ${coverage}${canonical}`;
-      });
+      const blocks = results.map(inspectionBlock);
       const text =
-        `${siteUrl} · inspected ${results.length} URL${results.length === 1 ? "" : "s"}\n` +
-        summaryLines.join("\n");
+        `${siteUrl} · inspected ${results.length} URL${results.length === 1 ? "" : "s"}\n\n` +
+        blocks.join("\n\n");
 
       return mcpResponse({
         text,
