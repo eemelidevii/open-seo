@@ -26,8 +26,9 @@ export default defineConfig({
   webServer: {
     cwd: repoRoot,
     // Forward the disposable test auth mode into the local workerd runtime.
+    // Fixture responses need no provider access; the dummy key suppresses setup UI.
     command:
-      "NODE_OPTIONS= CLOUDFLARE_INCLUDE_PROCESS_ENV=true AUTH_MODE=local_noauth VITE_E2E_DOMAIN_FIXTURES=1 VITE_E2E_KEYWORD_FIXTURES=1 PORT=3101 pnpm exec vite dev --host 127.0.0.1 --strictPort",
+      "NODE_OPTIONS= CLOUDFLARE_INCLUDE_PROCESS_ENV=true AUTH_MODE=local_noauth DATAFORSEO_API_KEY=local-browser-fixtures-only VITE_E2E_DOMAIN_FIXTURES=1 VITE_E2E_KEYWORD_FIXTURES=1 PORT=3101 pnpm exec vite dev --host 127.0.0.1 --strictPort",
     url: "http://localhost:3101",
     reuseExistingServer: false,
     timeout: 120_000,
