@@ -105,6 +105,10 @@ try {
     "alchemy",
     "deploy",
     "deploy/alchemy/alchemy.run.ts",
+    // Alchemy's CLI defaults --profile to "default", overriding its env
+    // provider. Pass the same profile used by the Access preflight explicitly.
+    "--profile",
+    profileName,
     "--env-file",
     envFile,
     "--stage",
