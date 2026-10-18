@@ -76,9 +76,11 @@ export function LighthouseIssuesScreen({
 
   // Runs stored before issue details were kept have no issues to list.
   const emptyMessage =
-    issuesQuery.data != null && !issuesQuery.data.hasIssueDetails
-      ? "This Lighthouse run was saved without issue details. Re-run the audit to see them."
-      : undefined;
+    issuesQuery.data?.payloadAvailable === false
+      ? "The saved Lighthouse detail file is unavailable. Historical scores are preserved. Run a new audit for current details."
+      : issuesQuery.data != null && !issuesQuery.data.hasIssueDetails
+        ? "This Lighthouse run was saved without issue details. Re-run the audit to see them."
+        : undefined;
 
   return (
     <div className="px-4 py-4 md:px-6 md:py-6 pb-24 md:pb-8 overflow-auto">
@@ -96,7 +98,9 @@ export function LighthouseIssuesScreen({
           finalUrl={issuesQuery.data?.finalUrl}
           scores={issuesQuery.data?.scores}
           metrics={issuesQuery.data?.metrics}
-          severityCounts={severityCounts}
+          severityCounts={
+            issuesQuery.data?.hasIssueDetails ? severityCounts : undefined
+          }
         />
 
         <TableCard>
@@ -116,32 +120,36 @@ export function LighthouseIssuesScreen({
             </div>
           ) : null}
 
-          <LighthouseIssuesToolbar
-            category={category}
-            categoryCounts={categoryCounts}
-            selectedCategoryLabel={selectedCategoryLabel}
-            isBusy={exportMutation.isPending}
-            visibleIssues={visibleIssues}
-            allIssues={allIssues}
-            onCategoryChange={(next) =>
-              void navigate({
-                search: (prev) => ({ ...prev, category: next }),
-                replace: true,
-              })
-            }
-            onCopy={(data, message) => {
-              void runCopy(data, message);
-            }}
-            onExport={(data) => {
-              void runExport(data);
-            }}
-            onExportRows={runExportRows}
-          />
-          <LighthouseIssueList
-            issues={visibleIssues}
-            isLoading={issuesQuery.isLoading}
-            emptyMessage={emptyMessage}
-          />
+          {issuesQuery.data?.payloadAvailable ? (
+            <LighthouseIssuesToolbar
+              category={category}
+              categoryCounts={categoryCounts}
+              selectedCategoryLabel={selectedCategoryLabel}
+              isBusy={exportMutation.isPending}
+              visibleIssues={visibleIssues}
+              allIssues={allIssues}
+              onCategoryChange={(next) =>
+                void navigate({
+                  search: (prev) => ({ ...prev, category: next }),
+                  replace: true,
+                })
+              }
+              onCopy={(data, message) => {
+                void runCopy(data, message);
+              }}
+              onExport={(data) => {
+                void runExport(data);
+              }}
+              onExportRows={runExportRows}
+            />
+          ) : null}
+          {!issuesQuery.isError ? (
+            <LighthouseIssueList
+              issues={visibleIssues}
+              isLoading={issuesQuery.isLoading}
+              emptyMessage={emptyMessage}
+            />
+          ) : null}
         </TableCard>
       </div>
     </div>

@@ -1,9 +1,9 @@
 import { env } from "cloudflare:workers";
 
-export async function getJsonFromR2(key: string): Promise<string> {
+export async function getJsonFromR2(key: string): Promise<string | null> {
   const object = await env.R2.get(key);
   if (!object) {
-    throw new Error("Audit payload not found");
+    return null;
   }
 
   return object.text();

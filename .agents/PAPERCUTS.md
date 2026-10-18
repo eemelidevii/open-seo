@@ -10,6 +10,8 @@ data, or sensitive paths.
 
 ## Open
 
+- [ ] `2026-10-18T18:31:02Z` — `codex` — The self-host release branch at `615252db` fails `ci:check` on 16 existing Prettier files, and Knip separately flags its unchanged `ManagedOAuthSnapshot` export. Reconcile the release baseline formatting and private type export so unrelated self-host fixes can use the complete gate; affected files are unchanged in account-migration PR #1.
+
 - [ ] `2026-09-30T19:03:30Z` — `codex` — The `no-array-sort` lint diagnostic recommends `toSorted()`, but the configured TypeScript library rejects it. Use the existing Remeda `sortBy` helper; align the lint guidance with the supported library target.
 - [ ] `2026-09-30T07:08:59Z` — `claude` — On a clone of the origin repo, `git tag --sort=-creatordate | head -1` (openseo-release-notes step 2) and `pnpm release:notes` (which defaults `--from` to the latest local semver tag) both resolve to `v0.0.6`, because release tags are published only on `every-app/open-seo`; the real base had to come from `gh release list --repo every-app/open-seo`. Have the skill and script read the latest release from the public repo instead of local tags.
 - [ ] `2026-09-30T07:08:59Z` — `claude` — openseo-release-notes says to look up `(#NN)` on `bensenescu/open-seo` first and fall back to `every-app/open-seo`, but PR numbers collide across the two repos: the commit "Rank Tracking strategy library (#340)" is `every-app/open-seo#340`, while `bensenescu/open-seo#340` is an unrelated merged PR, so the origin-first lookup silently returns the wrong one. Tell the skill to compare the fetched PR title with the commit subject and retry on the public repo when they differ.

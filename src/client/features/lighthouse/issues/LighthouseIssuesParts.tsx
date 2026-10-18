@@ -38,7 +38,7 @@ export function LighthouseIssuesHeader({
   finalUrl?: string;
   scores?: LighthouseScores | null;
   metrics?: LighthouseMetrics | null;
-  severityCounts: { critical: number; warning: number; info: number };
+  severityCounts?: { critical: number; warning: number; info: number };
 }) {
   return (
     <>
@@ -62,17 +62,19 @@ export function LighthouseIssuesHeader({
             </p>
           </div>
           <LighthouseIssuesSummary scores={scores} metrics={metrics} />
-          <div className="flex flex-wrap gap-2">
-            <SeverityBadge severity="critical">
-              Critical {severityCounts.critical}
-            </SeverityBadge>
-            <SeverityBadge severity="warning">
-              Warning {severityCounts.warning}
-            </SeverityBadge>
-            <SeverityBadge severity="info">
-              Info {severityCounts.info}
-            </SeverityBadge>
-          </div>
+          {severityCounts ? (
+            <div className="flex flex-wrap gap-2">
+              <SeverityBadge severity="critical">
+                Critical {severityCounts.critical}
+              </SeverityBadge>
+              <SeverityBadge severity="warning">
+                Warning {severityCounts.warning}
+              </SeverityBadge>
+              <SeverityBadge severity="info">
+                Info {severityCounts.info}
+              </SeverityBadge>
+            </div>
+          ) : null}
         </CardContent>
       </Card>
     </>
