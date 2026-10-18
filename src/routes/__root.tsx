@@ -6,8 +6,6 @@ import {
   Scripts,
   createRootRoute,
 } from "@tanstack/react-router";
-import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
-import { TanStackDevtools } from "@tanstack/react-devtools";
 import { QueryClientProvider } from "@tanstack/react-query";
 import * as React from "react";
 import { DefaultCatchBoundary } from "@/client/components/DefaultCatchBoundary";
@@ -28,6 +26,12 @@ import { isHostedClientAuthMode } from "@/lib/auth-mode";
 import { Toaster } from "sonner";
 import { queryClient } from "@/client/tanstack-db";
 import { getActiveOrganizationId } from "@/lib/auth-session";
+
+const showDevtools =
+  import.meta.env.DEV && import.meta.env.VITE_SHOW_DEVTOOLS !== "false";
+const OpenSeoDevtools = showDevtools
+  ? React.lazy(() => import("@/client/components/OpenSeoDevtools"))
+  : () => null;
 
 // Capture Google link error params before the router starts — a route loader
 // redirect would otherwise replace the URL and lose them. See googleLinkError.ts.
@@ -127,9 +131,6 @@ function PostHogBootstrap() {
 }
 
 function RootDocument({ children }: { children: React.ReactNode }) {
-  const showDevtools =
-    import.meta.env.DEV && import.meta.env.VITE_SHOW_DEVTOOLS !== "false";
-
   return (
     <html suppressHydrationWarning translate="no">
       <head>
@@ -147,17 +148,9 @@ function RootDocument({ children }: { children: React.ReactNode }) {
               <ExportToSheetsModal />
               <Toaster position="bottom-right" mobileOffset={{ bottom: 100 }} />
               {showDevtools ? (
-                <TanStackDevtools
-                  config={{ position: "bottom-right" }}
-                  eventBusConfig={{ connectToServerBus: true }}
-                  plugins={[
-                    {
-                      name: "TanStack Router",
-                      render: <TanStackRouterDevtoolsPanel />,
-                      defaultOpen: true,
-                    },
-                  ]}
-                />
+                <React.Suspense fallback={null}>
+                  <OpenSeoDevtools />
+                </React.Suspense>
               ) : null}
             </TooltipProvider>
           </QueryClientProvider>

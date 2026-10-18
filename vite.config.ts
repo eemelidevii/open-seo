@@ -65,6 +65,19 @@ export default defineConfig(({ mode, command }) => {
       allowedHosts,
       port,
     },
+    environments: {
+      ssr: {
+        optimizeDeps: {
+          // These ESM browser widgets are loaded lazily inside ClientOnly.
+          // The Worker optimizer otherwise resolves their Solid DOM imports
+          // against Solid's server exports before the client-only boundary.
+          exclude: [
+            "@tanstack/react-devtools",
+            "@tanstack/react-router-devtools",
+          ],
+        },
+      },
+    },
     build: {
       sourcemap: emitSourcemaps,
       outDir: emitSourcemaps ? "dist-sourcemaps" : "dist",
