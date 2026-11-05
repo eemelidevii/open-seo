@@ -24,7 +24,9 @@ beforeAll(async () => {
       id TEXT PRIMARY KEY, name TEXT NOT NULL, email TEXT NOT NULL UNIQUE,
       email_verified INTEGER NOT NULL DEFAULT 0, image TEXT,
       created_at INTEGER NOT NULL DEFAULT 0, updated_at INTEGER NOT NULL DEFAULT 0,
-      analytics_opted_out INTEGER, last_active_organization_id TEXT
+      analytics_opted_out INTEGER, last_active_organization_id TEXT,
+      terms_accepted_version TEXT, terms_accepted_at INTEGER,
+      product_updates_opt_in INTEGER, product_updates_changed_at INTEGER
     );
     CREATE TABLE saved_grant (
       user_id TEXT NOT NULL REFERENCES user(id), token TEXT NOT NULL
