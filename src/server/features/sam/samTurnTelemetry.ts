@@ -261,7 +261,7 @@ export class SamTelemetry {
       ...extra,
       credits: turn.credits,
     };
-    const error = extra.error_message;
+    const error = extra.error_name;
     const trace =
       turn.steps > 0
         ? turn.traceProperties(
@@ -287,7 +287,6 @@ export class SamTelemetry {
     billing?: Promise<void>,
   ): void {
     const errorName = error instanceof Error ? error.name : typeof error;
-    const errorMessage = error instanceof Error ? error.message : String(error);
     this.waitUntil(
       this.report(
         "error",
@@ -295,8 +294,8 @@ export class SamTelemetry {
           request_id: ctx?.requestId,
           error_stage: ctx?.stage,
           error_class: ctx?.classification,
+          // No message: model and tool errors can quote the user's content.
           error_name: errorName,
-          error_message: errorMessage.slice(0, 500),
         },
         messages,
         { synthesize: true, billing },

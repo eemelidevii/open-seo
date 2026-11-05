@@ -55,7 +55,12 @@ vi.mock("@/server/lib/posthog", () => ({
   captureServerEvent: vi.fn(),
 }));
 
+vi.mock("@/server/email/onboarding-drip", () => ({
+  sendCreditsExhaustedEvent: vi.fn(),
+}));
+
 import { captureServerEvent } from "@/server/lib/posthog";
+import { sendCreditsExhaustedEvent } from "@/server/email/onboarding-drip";
 import { AUTUMN_TRACK_RETRY_OPTIONS } from "@/server/billing/autumn";
 import {
   customerHasPaidPlan,
@@ -98,6 +103,13 @@ describe("subscription billing", () => {
     });
   });
 
+  it("treats an org with no Autumn customer as not on a paid plan", async () => {
+    const notFound = { body: '{"code":"customer_not_found"}' };
+    checkMock.mockRejectedValueOnce(Object.assign(new Error(), notFound));
+
+    await expect(customerHasPaidPlan("org_123")).resolves.toBe(false);
+  });
+
   it("retries a missing monthly balance once", async () => {
     vi.useFakeTimers();
     let monthlyChecks = 0;
@@ -122,6 +134,7 @@ describe("subscription billing", () => {
     await expect(result).resolves.toEqual({
       depleted: false,
       monthlyRemaining: 250,
+      budgetReached: false,
     });
     expect(monthlyChecks).toBe(2);
   });
@@ -324,6 +337,7 @@ describe("reserveUsageCredits", () => {
         credit_feature: "backlinks",
       },
     });
+    expect(sendCreditsExhaustedEvent).toHaveBeenCalledWith(customer);
   });
 
   it("retries a fail-open read once with the same lock, then fails closed", async () => {

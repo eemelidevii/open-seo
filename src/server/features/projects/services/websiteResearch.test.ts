@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type * as Ai from "ai";
+import { z } from "zod";
 
 const {
   generateText,
@@ -8,14 +10,23 @@ const {
   listCompetitors,
   listKeywords,
 } = vi.hoisted(() => ({
-  generateText: vi.fn(),
+  generateText:
+    vi.fn<
+      (options: {
+        output: { schema: unknown };
+        tools?: ResearchTools;
+        abortSignal: AbortSignal;
+      }) => Promise<{ output: Record<string, unknown> }>
+    >(),
   readSite: vi.fn(),
   search: vi.fn(),
   listSections: vi.fn(),
   listCompetitors: vi.fn(),
   listKeywords: vi.fn(),
 }));
-vi.mock("ai", () => ({
+vi.mock("ai", async (importOriginal) => ({
+  NoObjectGeneratedError: (await importOriginal<typeof Ai>())
+    .NoObjectGeneratedError,
   generateText,
   Output: { object: (value: unknown) => value },
   stepCountIs: vi.fn(),
@@ -27,7 +38,10 @@ vi.mock("@/server/lib/runtime-env", () => ({
   getRequiredEnvValue: vi.fn(),
   getOptionalEnvValue: vi.fn(),
 }));
-vi.mock("@/server/lib/openrouter", () => ({ buildChatAgentModel: vi.fn() }));
+vi.mock("@/server/lib/openrouter", () => ({
+  buildChatAgentModel: vi.fn(),
+  requireOpenRouterAccess: vi.fn(async () => ({ apiKey: "test-key" })),
+}));
 vi.mock("@/server/lib/chatAgent", () => ({
   requireOpenRouterCostUsd: vi.fn(),
 }));
@@ -43,7 +57,9 @@ vi.mock(
   () => ({ AiVisibilityRepository: { listResearchKeywords: listKeywords } }),
 );
 
+import { NoObjectGeneratedError } from "ai";
 import { researchWebsite } from "./websiteResearch";
+import { billResearchSpend } from "@/server/billing/researchSpend";
 import { AppError } from "@/server/lib/errors";
 import { customer } from "@/server/features/ai-visibility/services/aiVisibilityTestFixtures";
 
@@ -115,6 +131,22 @@ beforeEach(() => {
   );
 });
 
+const invalidJson = new NoObjectGeneratedError({
+  response: { id: "", timestamp: new Date(), modelId: "" },
+  usage: {
+    inputTokens: 0,
+    inputTokenDetails: {
+      noCacheTokens: 0,
+      cacheReadTokens: 0,
+      cacheWriteTokens: 0,
+    },
+    outputTokens: 0,
+    outputTokenDetails: { textTokens: 0, reasoningTokens: 0 },
+    totalTokens: 0,
+  },
+  finishReason: "stop",
+});
+
 describe("researchWebsite", () => {
   it("does no research when all project fields are already saved", async () => {
     expect(
@@ -178,6 +210,100 @@ describe("researchWebsite", () => {
     expect(result.suggestedKeywords).toEqual(valid.slice(0, 15));
   });
 
+  // Anthropic rejects the word-limit regex, so the model gets none and a long
+  // name is cut instead of failing a run that is already billed.
+  it("asks the model for no regex and cuts topic names to five words", async () => {
+    listSections.mockResolvedValue([]);
+    listCompetitors.mockResolvedValue([]);
+    listKeywords.mockResolvedValue([]);
+    const research = generateText.getMockImplementation();
+    if (!research) throw new Error("Expected the default research mock");
+    generateText.mockImplementationOnce(async (options) => {
+      const { output } = await research(options);
+      const longName = "best rank tracker for small agencies";
+      return {
+        output: {
+          ...output,
+          suggestedTopics: [
+            { ...topics[0], name: longName },
+            ...topics.slice(1),
+          ],
+        },
+      };
+    });
+
+    const result = await researchWebsite(
+      "https://saved.com",
+      project,
+      customer,
+    );
+
+    const schema = generateText.mock.calls[0]?.[0].output.schema;
+    if (!(schema instanceof z.ZodType)) throw new Error("Expected a schema");
+    expect(JSON.stringify(z.toJSONSchema(schema))).not.toContain('"pattern"');
+    expect(result.suggestedTopics[0].name).toBe("best rank tracker for small");
+  });
+
+  it("drops topics that repeat a name or prompt instead of failing the paid run", async () => {
+    listKeywords.mockResolvedValue([]);
+    const [first, second, third, fourth] = topics;
+    generateText.mockResolvedValueOnce({
+      output: {
+        suggestedTopics: [
+          first,
+          { ...second, name: " Rank  Tracker " },
+          { ...third, prompts: [...third.prompts.slice(1), first.prompts[0]] },
+          {
+            ...fourth,
+            prompts: [
+              ...fourth.prompts.slice(0, 4),
+              fourth.prompts[0].toUpperCase(),
+            ],
+          },
+          topics[4],
+        ],
+        suggestedKeywords: [],
+      },
+    });
+
+    const result = await researchWebsite(
+      "https://saved.com",
+      project,
+      customer,
+    );
+
+    expect(result.suggestedTopics).toEqual([first, topics[4]]);
+  });
+
+  it("drops a competitor it could not verify instead of failing the paid run", async () => {
+    listCompetitors.mockResolvedValue([]);
+    const succeed = generateText.getMockImplementation()!;
+    generateText.mockImplementationOnce(async (options) => {
+      await succeed(options);
+      return {
+        output: {
+          competitors: [
+            competitor,
+            { ...competitor, domain: "unread.com" },
+            {
+              ...competitor,
+              domain: "saved.com",
+              sourceUrl: "https://saved.com/",
+            },
+          ],
+        },
+      };
+    });
+
+    const result = await researchWebsite(
+      "https://saved.com",
+      project,
+      customer,
+    );
+
+    expect(result.competitors).toEqual([competitor]);
+  });
+
   it.each([
     { failures: 1, competitors: [competitor] },
     { failures: 4, competitors: [] },
@@ -199,6 +325,55 @@ describe("researchWebsite", () => {
     },
   );
 
+  it("retries with fresh tool budgets when the model returns invalid JSON", async () => {
+    listCompetitors.mockResolvedValue([]);
+    const succeed = generateText.getMockImplementation()!;
+    generateText.mockImplementationOnce(async (options) => {
+      await succeed(options);
+      throw invalidJson;
+    });
+
+    const result = await researchWebsite(
+      "https://saved.com",
+      project,
+      customer,
+    );
+
+    expect(search).toHaveBeenCalledTimes(2);
+    expect(result.competitors).toEqual([competitor]);
+  });
+
+  it("explains a research deadline timeout", async () => {
+    listCompetitors.mockResolvedValue([]);
+    vi.spyOn(AbortSignal, "timeout").mockReturnValue(
+      AbortSignal.abort(new DOMException("", "TimeoutError")),
+    );
+    generateText.mockImplementation(
+      ({ abortSignal }: { abortSignal: AbortSignal }) =>
+        Promise.reject(abortSignal.reason),
+    );
+
+    await expect(
+      researchWebsite("https://saved.com", project, customer),
+    ).rejects.toThrow("Website research took too long");
+    expect(generateText).toHaveBeenCalledOnce();
+  });
+
+  it("does not credit a retry with an earlier attempt's search", async () => {
+    listCompetitors.mockResolvedValue([]);
+    const succeed = generateText.getMockImplementation()!;
+    generateText
+      .mockImplementationOnce(async (options) => {
+        await succeed(options);
+        throw invalidJson;
+      })
+      .mockResolvedValueOnce({ output: { competitors: [] } });
+
+    await expect(
+      researchWebsite("https://saved.com", project, customer),
+    ).rejects.toThrow("Website research was incomplete");
+  });
+
   it("fails instead of skipping competitors when search fails for a non-outage reason", async () => {
     listCompetitors.mockResolvedValue([]);
     search.mockRejectedValue(new AppError("DATAFORSEO_AUTH_FAILED"));
@@ -207,5 +382,22 @@ describe("researchWebsite", () => {
       researchWebsite("https://saved.com", project, customer),
     ).rejects.toThrow("Website research was incomplete");
     expect(search).toHaveBeenCalledOnce();
+  });
+
+  it("bills Context reads of a site that stays unreadable", async () => {
+    listSections.mockResolvedValue([]);
+    readSite.mockImplementation(
+      async (_site, _pages, usage: { contextCredits: number }) => {
+        usage.contextCredits += 1;
+        return { pages: [] };
+      },
+    );
+
+    await expect(
+      researchWebsite("https://saved.com", project, customer),
+    ).rejects.toThrow(AppError);
+    expect(billResearchSpend).toHaveBeenCalledWith(customer, [
+      expect.objectContaining({ provider: "context", costUsd: 0.0025 }),
+    ]);
   });
 });

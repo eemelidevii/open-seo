@@ -1,124 +1,37 @@
-import { sort } from "remeda";
-import { autumnSeoDataCreditsToUsd } from "@/shared/billing";
-import {
-  creditFeatureLabel,
-  mapDataforseoPathToCreditFeature,
-} from "@/shared/billing-credit-features";
-import type { BillingUsageEvent } from "@/serverFunctions/billing";
+import { Info } from "lucide-react";
+import type { BillingUsage } from "@/server/billing/usage";
+import { Alert, AlertDescription } from "@/client/components/ui/alert";
 import { QueryState } from "@/client/components/QueryState";
 import { Skeleton } from "@/client/components/ui/skeleton";
 import { BillingUsageSection } from "@/client/features/billing/BillingUsageSection";
-import { useBillingUsageEvents } from "@/client/features/billing/useBillingUsageEvents";
+import { useBillingUsage } from "@/client/features/billing/useBillingUsage";
 
-type BillingUsageEventProperties = {
-  creditFeature?: unknown;
-  credit_feature?: unknown;
-  path?: unknown;
-  paths?: unknown;
-};
+// Usage events carry a project from Nov 1, 2026. Until that day leaves the
+// 30-day window, older usage still shows as Workspace.
+const PROJECT_USAGE_COMPLETE_AT = Date.parse("2026-12-02T00:00:00Z");
 
-type BillingFeatureBreakdownRow = {
-  label: string;
-  usd: number;
-};
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function getPathSegmentsFromProperties(
-  properties: BillingUsageEventProperties,
-): string[] | null {
-  const paths = properties.paths ?? properties.path;
-  if (Array.isArray(paths)) {
-    const stringPaths = paths.filter(
-      (value): value is string => typeof value === "string",
-    );
-    if (
-      stringPaths.length > 1 &&
-      stringPaths.every((segment) => !segment.includes("/"))
-    ) {
-      return stringPaths;
-    }
-
-    const path = stringPaths[0];
-    if (!path) return null;
-
-    const parsedPath = parseJsonEncodedPath(path);
-    return parsedPath ?? path.split("/").filter(Boolean);
-  }
-
-  if (typeof paths !== "string") return null;
-
-  const parsedPath = parseJsonEncodedPath(paths);
-  return parsedPath ?? paths.split("/").filter(Boolean);
-}
-
-function parseJsonEncodedPath(path: string): string[] | null {
-  if (!path.startsWith("[")) return null;
-
-  try {
-    const parsed: unknown = JSON.parse(path);
-    if (!Array.isArray(parsed)) return null;
-    const stringPaths = parsed.filter(
-      (value): value is string => typeof value === "string",
-    );
-    if (
-      stringPaths.length > 1 &&
-      stringPaths.every((segment) => !segment.includes("/"))
-    ) {
-      return stringPaths;
-    }
-
-    const firstPath = stringPaths[0];
-    return firstPath ? firstPath.split("/").filter(Boolean) : null;
-  } catch {
-    return null;
-  }
-}
-
-function getCreditFeatureFromUsageEvent(
-  event: BillingUsageEvent,
-): string | null {
-  const properties = isRecord(event.properties) ? event.properties : {};
-  const explicitFeature = properties.creditFeature ?? properties.credit_feature;
-  if (typeof explicitFeature === "string" && explicitFeature.length > 0) {
-    return explicitFeature;
-  }
-
-  const path = getPathSegmentsFromProperties(properties);
-  return path ? mapDataforseoPathToCreditFeature(path) : null;
-}
-
-export function getBillingFeatureBreakdownRows(
-  events: BillingUsageEvent[],
-): BillingFeatureBreakdownRow[] {
-  const creditsByLabel = new Map<string, number>();
-
-  for (const event of events) {
-    const feature = getCreditFeatureFromUsageEvent(event);
-    const label = feature ? creditFeatureLabel(feature) : "Other";
-    creditsByLabel.set(label, (creditsByLabel.get(label) ?? 0) + event.value);
-  }
-
-  return sort(
-    [...creditsByLabel.entries()]
-      .map(([label, credits]) => ({
-        label,
-        usd: autumnSeoDataCreditsToUsd(credits),
-      }))
-      .filter((row) => row.usd > 0),
-    (a, b) => b.usd - a.usd,
-  );
-}
-
-export function BillingFeatureBreakdown() {
-  const eventsQuery = useBillingUsageEvents();
+/** Last 30 days of usage split by feature or by project. */
+export function BillingFeatureBreakdown({
+  by,
+}: {
+  by: "features" | "projects";
+}) {
+  const usageQuery = useBillingUsage();
 
   return (
-    <BillingUsageSection title="Usage by feature">
+    <BillingUsageSection
+      title={by === "features" ? "Usage by feature" : "Usage by project"}
+    >
+      {by === "projects" && Date.now() < PROJECT_USAGE_COMPLETE_AT ? (
+        <Alert className="mb-4">
+          <Info />
+          <AlertDescription>
+            Project tracking started Nov 1, so earlier usage shows as Workspace.
+          </AlertDescription>
+        </Alert>
+      ) : null}
       <QueryState
-        query={eventsQuery}
+        query={usageQuery}
         errorFallback="Failed to load usage"
         loading={
           <div className="space-y-3">
@@ -128,14 +41,13 @@ export function BillingFeatureBreakdown() {
           </div>
         }
       >
-        {(events) => <BreakdownRows events={events} />}
+        {(usage) => <BreakdownRows rows={usage[by]} />}
       </QueryState>
     </BillingUsageSection>
   );
 }
 
-function BreakdownRows({ events }: { events: BillingUsageEvent[] }) {
-  const rows = getBillingFeatureBreakdownRows(events);
+function BreakdownRows({ rows }: { rows: BillingUsage["features"] }) {
   const total = rows.reduce((sum, row) => sum + row.usd, 0);
 
   if (rows.length === 0) {
