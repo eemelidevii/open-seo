@@ -39,11 +39,11 @@ export function CheckConfirmModal({
       onClose={onCancel}
     >
       {keywordCount} keywords &times; {dc} device{dc !== 1 ? "s" : ""} ={" "}
-      {totalChecks} SERP checks. Results in ~{eta}.
+      {totalChecks} SERP checks. First results in ~{eta}.
       {costUsd != null ? (
         <>
           {" "}
-          Costs about{" "}
+          Costs up to{" "}
           <span className="font-mono font-semibold text-foreground">
             ${costUsd.toFixed(2)}
           </span>

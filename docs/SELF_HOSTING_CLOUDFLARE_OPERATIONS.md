@@ -60,6 +60,35 @@ app, review the exact Access application, policy and redirect allowlist;
 perform a staged deploy and live OAuth smoke test. A failed repair blocks the
 release.
 
+## Manage accounts
+
+With password accounts, the first visitor creates the administrator's account and teammates join from invitation links (Team settings). There is no email delivery, so password resets and accounts outside the invitation flow are operator commands:
+
+1. Set `OPENSEO_OPERATOR_SECRET` in `.env.selfhost` to a random value (`openssl rand -hex 32`) and redeploy. This turns on the operator endpoint, which answers only to requests carrying that secret.
+2. Run the command with the password on standard input and the deployed URL in `OPENSEO_URL`. This Bash example keeps the password out of shell history and process arguments:
+
+```bash
+read -rs -p 'New password: ' password; echo
+printf '%s\n' "$password" | OPENSEO_URL=https://YOUR_WORKER_HOSTNAME pnpm selfhost:admin reset-password you@example.com
+unset password
+```
+
+A reset signs that user out everywhere. `pnpm selfhost:admin create-user you@example.com 'Your name'` creates an account the same way, for example to create the administrator's account from the terminal before anyone opens the URL. `OPENSEO_URL` can also live in `.env.selfhost`.
+
+### Switching from Cloudflare Access to password accounts
+
+Existing users keep their data, but they signed in through Cloudflare and have no password, and registration is closed once any user exists, so give each of them a password:
+
+1. Set `AUTH_MODE=password` and `OPENSEO_OPERATOR_SECRET` in `.env.selfhost` and redeploy. The deploy removes the Access application it created, so the app is reachable without Cloudflare's login from then on.
+2. Find each user's id in the `user` table of the `open-seo-db-selfhost` D1 database (Cloudflare dashboard, Storage & Databases, D1).
+3. For each user, with the password on standard input as above:
+
+```sh
+OPENSEO_URL=https://YOUR_WORKER_HOSTNAME pnpm selfhost:admin claim-legacy-user USER_ID you@example.com shared-workspace
+```
+
+Everyone shares the `shared-workspace` organization; the command makes the user one of its owners.
+
 ## AI visibility tracking
 
 AI Visibility uses your `DATAFORSEO_API_KEY`; tracked questions are sent to DataForSEO and billed directly by the provider. Set `OPENROUTER_API_KEY` for setup research and generated prompt suggestions. Deployment configures background collection and a five-minute cron that dispatches due daily, weekly, or monthly checks. The app shows the collection cost before a check or schedule starts. See the [AI Visibility guide](https://openseo.so/docs/ai-visibility).

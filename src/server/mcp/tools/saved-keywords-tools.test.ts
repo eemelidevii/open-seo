@@ -15,12 +15,6 @@ vi.mock("@/server/features/projects/services/ProjectService", () => ({
   },
 }));
 
-// project-auth imports the repository for user-scoped (API key) credentials;
-// unused here (pinned context) but keeps the db out of the module graph.
-vi.mock("@/server/auth/repositories/AuthRepository", () => ({
-  AuthRepository: { getMembership: vi.fn() },
-}));
-
 vi.mock("@/server/features/keywords/services/KeywordResearchService", () => ({
   KeywordResearchService: {
     getSavedKeywords: mocks.getSavedKeywords,
@@ -94,7 +88,10 @@ describe("saved keyword MCP tools", () => {
         },
         toolContext,
       ),
-    ).rejects.toThrow("Replacement tags are required");
+    ).rejects.toMatchObject({
+      code: "VALIDATION_ERROR",
+      message: "Replacement tags are required when tagMode is replace.",
+    });
     expect(mocks.saveKeywords).not.toHaveBeenCalled();
   });
 

@@ -172,6 +172,9 @@ function TableCard({ controller }: Props) {
         isFiltered={activeFilterCount > 0}
         resetFilters={controller.resetFilters}
         handleRowClick={controller.handleRowClick}
+        serpLoadingKeyword={
+          controller.serpLoading ? controller.activeSerpKeyword : null
+        }
         toolbar={
           <>
             <DataTableToolbar
@@ -295,6 +298,7 @@ function SerpPanel({ controller }: Props) {
         loadingMore={controller.serpLoadingMore}
         canLoadMore={controller.canLoadMoreSerp}
         error={controller.serpError}
+        outOfCredits={controller.serpOutOfCredits}
         onRetry={controller.retrySerp}
         retrying={controller.serpRetrying}
         deepFetchFailed={controller.deepFetchFailed}

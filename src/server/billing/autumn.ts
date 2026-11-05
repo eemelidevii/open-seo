@@ -55,6 +55,12 @@ export const autumn = {
       loadAutumn().then((client) => client.customers.get(...args)),
     update: (...args: Parameters<Autumn["customers"]["update"]>) =>
       loadAutumn().then((client) => client.customers.update(...args)),
+    delete: (...args: Parameters<Autumn["customers"]["delete"]>) =>
+      loadAutumn().then((client) => client.customers.delete(...args)),
+  },
+  events: {
+    aggregate: (...args: Parameters<Autumn["events"]["aggregate"]>) =>
+      loadAutumn().then((client) => client.events.aggregate(...args)),
   },
   invoices: {
     list: (...args: Parameters<Autumn["invoices"]["list"]>) =>
@@ -73,6 +79,8 @@ export const autumn = {
       ...args: Parameters<Autumn["billing"]["openCustomerPortal"]>
     ) =>
       loadAutumn().then((client) => client.billing.openCustomerPortal(...args)),
+    update: (...args: Parameters<Autumn["billing"]["update"]>) =>
+      loadAutumn().then((client) => client.billing.update(...args)),
   },
 };
 

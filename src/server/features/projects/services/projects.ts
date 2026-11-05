@@ -1,7 +1,7 @@
 import type {
   ArchiveProjectInput,
   CreateProjectInput,
-  RestoreProjectInput,
+  ArchivedProjectInput,
   SetProjectWebsiteInput,
   UpdateProjectInput,
 } from "@/types/schemas/projects";
@@ -169,7 +169,7 @@ export async function listArchivedProjects(organizationId: string) {
 
 export async function restoreProject(
   organizationId: string,
-  input: RestoreProjectInput,
+  input: ArchivedProjectInput,
 ) {
   try {
     await ProjectRepository.restoreProject(
@@ -204,18 +204,6 @@ export async function getProjectForOrganization(
   }
 
   return mapProject(project);
-}
-
-// Project lookup that reveals which org owns it, for user-scoped credentials
-// (MCP API keys): the caller derives the org FROM the project and must then
-// authorize the user's membership in that org before acting on the result.
-export async function getProjectWithOrganization(projectId: string) {
-  const project = await ProjectRepository.getProjectById(projectId);
-  if (!project) return null;
-  return {
-    organizationId: project.organizationId,
-    project: mapProject(project),
-  };
 }
 
 export async function setProjectWebsite(
