@@ -13,6 +13,7 @@ import { AppError, asAppError } from "@/server/lib/errors";
 import type { ErrorCode } from "@/shared/error-codes";
 import { getIsoCountryCode } from "@/shared/keyword-locations";
 import {
+  AI_LIVE_ANSWERS_PER_STEP,
   aiEngineUsesModelApi,
   type AiBrand,
   type AiEngine,
@@ -54,12 +55,6 @@ interface AiRunMarket {
 }
 
 /**
- * Live answers per workflow step. A Worker holds 6 connections open at once,
- * so a larger step only queues calls behind the first 6.
- */
-const LIVE_ANSWERS_PER_STEP = 6;
-
-/**
  * Attempts per answer. A new attempt follows only when DataForSEO returned the
  * task and its own backend failed it, so the failure and its cost are known. A
  * transport error or a timeout can hide a charge, so it is never retried.
@@ -91,14 +86,14 @@ export async function prepareAiRun(
   )
 > {
   const run = await repo.getRunInternal(runId);
-  // Stale-run cleanup failed it already; a retry would find the same.
-  if (!run || (run.status !== "queued" && run.status !== "running"))
+  // Stale-run cleanup failed it already; a retry would find the same. The
+  // guarded write also catches a cleanup that lands after this read.
+  if (!run || !(await repo.updateActiveRun(runId, { status: "running" })))
     throw new NonRetryableError(`Run ${runId} is no longer active.`);
   const pending = (await repo.getObservations([runId])).filter(
     (row) => row.status === "pending",
   );
   const live = run.trigger !== "scheduled";
-  await repo.updateRun(runId, { status: "running" });
   const market = {
     locationCode: run.locationCode,
     languageCode: run.languageCode,
@@ -110,13 +105,13 @@ export async function prepareAiRun(
   }));
   const modelBatches = engineBatches(
     tasks.filter((task) => aiEngineUsesModelApi(task.engine)),
-    LIVE_ANSWERS_PER_STEP,
+    AI_LIVE_ANSWERS_PER_STEP,
   );
   const answers = tasks.filter((task) => !aiEngineUsesModelApi(task.engine));
   if (live) {
     const batches: AiLiveTask[][] = [];
-    for (let i = 0; i < answers.length; i += LIVE_ANSWERS_PER_STEP)
-      batches.push(answers.slice(i, i + LIVE_ANSWERS_PER_STEP));
+    for (let i = 0; i < answers.length; i += AI_LIVE_ANSWERS_PER_STEP)
+      batches.push(answers.slice(i, i + AI_LIVE_ANSWERS_PER_STEP));
     return { market, modelBatches, live, batches };
   }
   return {

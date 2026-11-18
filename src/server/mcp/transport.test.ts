@@ -3,6 +3,7 @@ import type { CreateMcpHandlerOptions } from "agents/mcp/server";
 import { McpServer } from "@modelcontextprotocol/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  createMcpToolContext,
   createWorkersOAuthMcpProps,
   MCP_AUTH_CONTEXT_PROP,
 } from "@/server/mcp/context";
@@ -21,10 +22,14 @@ const selfHostedAuthMocks = vi.hoisted(() => ({
 const authRepositoryMocks = vi.hoisted(() => ({
   getMembership: vi.fn(),
 }));
+const findClaimingUser = vi.hoisted(() => vi.fn());
 
 vi.mock("cloudflare:workers", () => ({ env: {} }));
 vi.mock("@/server/auth/repositories/AuthRepository", () => ({
   AuthRepository: authRepositoryMocks,
+}));
+vi.mock("@/server/auth/repositories/GuestAccountRepository", () => ({
+  GuestAccountRepository: { findClaimingUser },
 }));
 
 vi.mock("@/middleware/ensure-user/cloudflareAccess", () => ({
@@ -219,8 +224,18 @@ describe("handleSelfHostedOpenSeoMcpRequest", () => {
         organizationId: "shared-workspace",
         baseUrl: "https://open-seo.test",
         clientId: "service_token",
+        role: "member",
         readOnly: true,
       },
+    });
+    // v0.1.24+ fails closed for a non-null clientId without a role; the Ops
+    // service token must still build a tool context.
+    const serviceProps =
+      selfHostedAuthMocks.createOpenSeoMcpServer.mock.calls.at(-1)?.[0];
+    expect(createMcpToolContext({}, serviceProps).auth).toMatchObject({
+      clientId: "service_token",
+      role: "member",
+      readOnly: true,
     });
   });
 
@@ -244,6 +259,7 @@ describe("handleSelfHostedOpenSeoMcpRequest", () => {
 describe("handleAuthenticatedOpenSeoMcpRequest", () => {
   beforeEach(() => {
     authRepositoryMocks.getMembership.mockResolvedValue({ role: "owner" });
+    findClaimingUser.mockResolvedValue(null);
   });
 
   it("accepts the provider's encrypted identity and MCP scope fallback", async () => {
@@ -360,6 +376,43 @@ describe("handleAuthenticatedOpenSeoMcpRequest", () => {
       'Bearer error="invalid_token"',
     );
     expect(selfHostedAuthMocks.createOpenSeoMcpServer).not.toHaveBeenCalled();
+  });
+
+  // Someone signed up in the browser that connected the guest: the agent
+  // keeps its token and now works as their account, in the same org.
+  it("acts as the account that claimed a guest's token", async () => {
+    findClaimingUser.mockResolvedValue({
+      userId: "real-user",
+      email: "ana@example.com",
+    });
+    const props = createWorkersOAuthMcpProps({
+      ...hostedProps()[MCP_AUTH_CONTEXT_PROP],
+      userId: "guest-user",
+      guestClaimToken: "claim-token",
+    });
+
+    const response = await handleAuthenticatedOpenSeoMcpRequest(
+      createMcpRequest(),
+      props,
+      {},
+      { ...ctx, props },
+    );
+
+    expect(response.status).toBe(200);
+    expect(findClaimingUser).toHaveBeenCalledWith("guest-user");
+    expect(authRepositoryMocks.getMembership).toHaveBeenCalledWith(
+      "real-user",
+      "org-1",
+    );
+    expect(selfHostedAuthMocks.createOpenSeoMcpServer).toHaveBeenCalledWith({
+      [MCP_AUTH_CONTEXT_PROP]: {
+        ...props[MCP_AUTH_CONTEXT_PROP],
+        userId: "real-user",
+        userEmail: "ana@example.com",
+        guestClaimToken: undefined,
+        role: "owner",
+      },
+    });
   });
 
   it("rejects an OAuth client without the MCP scope", async () => {

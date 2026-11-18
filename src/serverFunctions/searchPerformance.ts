@@ -9,6 +9,7 @@ import {
   type GscPerformanceFilter,
 } from "@/server/features/gsc/searchAnalytics";
 import {
+  buildDailyTrend,
   buildStrikingDistanceRows,
   previousPeriod,
   sumSearchTotals,
@@ -33,7 +34,9 @@ const EXPORT_ROW_LIMIT = 1000;
 
 /** Build GSC filter groups shared by every call. Device, page, and query apply everywhere;
  *  country applies everywhere except the country breakdown itself (so the
- *  dropdown keeps every option visible while one country is selected). */
+ *  dropdown keeps every option visible while one country is selected).
+ *  Google rejects a device filter on Discover, so a leftover device in an old
+ *  link is dropped there. */
 function buildGscFilters(data: {
   searchType: SearchPerformanceType;
   device?: string;
@@ -44,9 +47,10 @@ function buildGscFilters(data: {
   nonCountryFilters: GscPerformanceFilter[];
   filters: GscPerformanceFilter[];
 } {
-  const nonCountryFilters: GscPerformanceFilter[] = data.device
-    ? [{ dimension: "device", operator: "equals", expression: data.device }]
-    : [];
+  const nonCountryFilters: GscPerformanceFilter[] =
+    data.device && data.searchType !== "discover"
+      ? [{ dimension: "device", operator: "equals", expression: data.device }]
+      : [];
   if (data.pageFilter)
     nonCountryFilters.push({ dimension: "page", ...data.pageFilter });
   // Discover and Google News have no query dimension to filter on.
@@ -139,6 +143,7 @@ export const getSearchPerformanceReport = createServerFn({ method: "POST" })
         },
         totals: sumSearchTotals(current.rows),
         prevTotals: sumSearchTotals(previous.rows),
+        trend: buildDailyTrend(current.rows, startDate, endDate),
         strikingDistance: buildStrikingDistanceRows(queryPages.rows),
         countries: toDimensionRows(countries.rows),
       };
