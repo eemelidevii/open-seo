@@ -24,9 +24,12 @@ export type SortDir = "asc" | "desc";
 export function AreaTrendChart({
   trend,
   label = "Search volume",
+  className = "h-[210px]",
 }: {
   trend: MonthlySearch[];
   label?: string;
+  /** Height utility for the chart. */
+  className?: string;
 }) {
   const last12 = lastTwelveMonths(trend);
   if (last12.length === 0) return null;
@@ -43,7 +46,7 @@ export function AreaTrendChart({
           searchVolume: { label, color: "var(--color-primary)" },
         } satisfies ChartConfig
       }
-      className="h-[210px]"
+      className={className}
       aria-label={`${label} trend chart`}
     >
       <AreaChart

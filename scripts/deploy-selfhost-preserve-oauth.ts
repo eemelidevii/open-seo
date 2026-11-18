@@ -99,6 +99,8 @@ try {
     ...process.env,
     OPENSEO_SELFHOST_ENV_FILE: envFile,
   });
+  // v0.1.25+: report widgets are a separate bundle the app build embeds.
+  run("pnpm", ["build:report-widgets"]);
   run("pnpm", ["exec", "vite", "build", "--mode", "selfhost"]);
   run("pnpm", ["exec", "tsc", "--noEmit"]);
   run("pnpm", [
