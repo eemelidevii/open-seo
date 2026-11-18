@@ -727,9 +727,10 @@ const LIGHTHOUSE_COLUMNS: McpTableColumn<LighthouseResult>[] = [
 async function readLighthouseIssues(row: LighthouseRow) {
   // A failed test stored no report.
   if (!row.r2Key) return { hasIssueDetails: false, issues: [] };
-  const { report } = readStoredLighthousePayload(
-    await getJsonFromR2(row.r2Key),
-  );
+  // DM Faster: getJsonFromR2 returns null for an expired/missing payload.
+  const payloadJson = await getJsonFromR2(row.r2Key);
+  if (payloadJson === null) return { hasIssueDetails: false, issues: [] };
+  const { report } = readStoredLighthousePayload(payloadJson);
   return {
     hasIssueDetails: report.hasIssueDetails,
     issues: report.issues.map((issue) => ({
