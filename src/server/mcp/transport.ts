@@ -280,7 +280,10 @@ export async function handleSelfHostedOpenSeoMcpRequest(
     organizationId: identity.organizationId,
     baseUrl: getPublicOrigin(request),
     ...("mcpServiceToken" in identity && identity.mcpServiceToken
-      ? { readOnly: true, clientId: "service_token" }
+      ? // The non-null clientId marks a non-first-party caller, so
+        // createMcpToolContext (v0.1.24+) requires a stamped role. The
+        // read-only tool allowlist bounds it; "member" is least privilege.
+        { readOnly: true, clientId: "service_token", role: "member" }
       : {}),
     userAgent: request.headers.get("user-agent") ?? undefined,
   });

@@ -3,6 +3,7 @@ import type { CreateMcpHandlerOptions } from "agents/mcp/server";
 import { McpServer } from "@modelcontextprotocol/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  createMcpToolContext,
   createWorkersOAuthMcpProps,
   MCP_AUTH_CONTEXT_PROP,
 } from "@/server/mcp/context";
@@ -223,8 +224,18 @@ describe("handleSelfHostedOpenSeoMcpRequest", () => {
         organizationId: "shared-workspace",
         baseUrl: "https://open-seo.test",
         clientId: "service_token",
+        role: "member",
         readOnly: true,
       },
+    });
+    // v0.1.24+ fails closed for a non-null clientId without a role; the Ops
+    // service token must still build a tool context.
+    const serviceProps =
+      selfHostedAuthMocks.createOpenSeoMcpServer.mock.calls.at(-1)?.[0];
+    expect(createMcpToolContext({}, serviceProps).auth).toMatchObject({
+      clientId: "service_token",
+      role: "member",
+      readOnly: true,
     });
   });
 
